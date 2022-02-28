@@ -23,13 +23,13 @@ train_config = {
     "train_data": "train_data.json",  #训练集
     "valid_data": "valid_data.json",  #验证集
     "rel2id": "rel2id.json",  # 关系到id的映射
-    "logger": "wandb", # if wandb, comment the following four lines
+    # "logger": "wandb", # if wandb, comment the following four lines
     
 #     # if logger is set as default, uncomment the following four lines
-#     "logger": "default", 
-#     "run_id": run_id,
-#     "log_path": "./default_log_dir/default.log",
-#     "path_to_save_model": "./default_log_dir/{}".format(run_id),
+    "logger": "default",
+    "run_id": run_id,
+    "log_path": "./default_log_dir/default.log",
+    "path_to_save_model": "./default_log_dir/{}".format(run_id),
 
     # 保存模型，只有当f1 score大于当前值f1_2_save的时候
     "f1_2_save": 0, 

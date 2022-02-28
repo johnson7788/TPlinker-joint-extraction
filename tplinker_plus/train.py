@@ -8,7 +8,6 @@ import json
 import os
 from tqdm import tqdm
 import re
-from IPython.core.debugger import set_trace
 from pprint import pprint
 import unicodedata
 from transformers import BertModel, BertTokenizerFast
