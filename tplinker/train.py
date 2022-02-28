@@ -321,30 +321,30 @@ elif config["encoder"] in {"BiLSTM", }:
                                    hyper_parameters["ent_add_dist"],
                                    hyper_parameters["rel_add_dist"],
                                   )
-
+# 模型放到gpu上
 rel_extractor = rel_extractor.to(device)
 
 
-# In[ ]:
 
 
-# all_paras = sum(x.numel() for x in rel_extractor.parameters())
-# enc_paras = sum(x.numel() for x in encoder.parameters())
+# 统计参数
+all_paras = sum(x.numel() for x in rel_extractor.parameters())
+enc_paras = sum(x.numel() for x in encoder.parameters())
 
 
-# In[ ]:
 
 
-# print(all_paras, enc_paras)
-# print(all_paras - enc_paras)
+
+print(f"模型的总的参数量{all_paras}, 编码器的参数量: {enc_paras}")
+print(f"总的参数量减去编码器的参数量: {all_paras - enc_paras}")
 
 
-# # Metrics
+# # 评估指标
 
-# In[ ]:
 
 
 def bias_loss(weights = None):
+    # 交叉熵损失
     if weights is not None:
         weights = torch.FloatTensor(weights).to(device)
     cross_en = nn.CrossEntropyLoss(weight = weights)  
@@ -352,7 +352,7 @@ def bias_loss(weights = None):
 loss_func = bias_loss()
 
 
-# In[ ]:
+
 
 
 metrics = MetricsCalculator(handshaking_tagger)
@@ -360,10 +360,10 @@ metrics = MetricsCalculator(handshaking_tagger)
 
 # # Train
 
-# In[ ]:
 
 
-# train step
+
+#开始训练
 def train_step(batch_train_data, optimizer, loss_weights):
     if config["encoder"] == "BERT":
         sample_list, batch_input_ids,         batch_attention_mask, batch_token_type_ids,         tok2char_span_list, batch_ent_shaking_tag,         batch_head_rel_shaking_tag, batch_tail_rel_shaking_tag = batch_train_data
@@ -461,26 +461,41 @@ def valid_step(batch_valid_data):
     return ent_sample_acc.item(), head_rel_sample_acc.item(), tail_rel_sample_acc.item(), rel_cpg
 
 
-# In[ ]:
+
 
 
 max_f1 = 0.
 def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_epoch):  
     def train(dataloader, ep):
-        # train
+        """
+        开始训练
+        :param dataloader: 数据集
+        :type dataloader:
+        :param ep:  epoch:  eg: 0
+        :type ep: int
+        :return:
+        :rtype:
+        """
+        # 模型是训练状态
         rel_extractor.train()
-        
+        # 开始时间
         t_ep = time.time()
         start_lr = optimizer.param_groups[0]['lr']
         total_loss, total_ent_sample_acc, total_head_rel_sample_acc, total_tail_rel_sample_acc = 0., 0., 0., 0.
         for batch_ind, batch_train_data in enumerate(dataloader):
-            t_batch = time.time()
-            z = (2 * len(rel2id) + 1)
+            # data 包含: sample_list, batch_input_ids, batch_attention_mask, batch_token_type_ids, tok2char_span_list, batch_ent_shaking_tag, batch_head_rel_shaking_tag, batch_tail_rel_shaking_tag
+            t_batch = time.time()  # 一个批次的开始时间
+            z = (2 * len(rel2id) + 1)   # 实际转换成2N+1个序列标注任务，N表示预先定义的关系类型的数量，
             steps_per_ep = len(dataloader)
+            # 为了加快训练速度, EH-to-ET 的损失比重是比其它在开始的时候要高， 但是在训练了loss_weight_recover_steps个step之后，损失的比重变正常
             total_steps = hyper_parameters["loss_weight_recover_steps"] + 1 # + 1 avoid division by zero error
+            #
             current_step = steps_per_ep * ep + batch_ind
+            #
             w_ent = max(1 / z + 1 - current_step / total_steps, 1 / z)
+            #
             w_rel = min((len(rel2id) / z) * current_step / total_steps, (len(rel2id) / z))
+            #
             loss_weights = {"ent": w_ent, "rel": w_rel}
             
             loss, ent_sample_acc, head_rel_sample_acc, tail_rel_sample_acc = train_step(batch_train_data, optimizer, loss_weights)
@@ -584,7 +599,7 @@ def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_ep
         print("Current avf_f1: {}, Best f1: {}".format(valid_f1, max_f1))
 
 
-# In[ ]:
+
 
 
 # optimizer
@@ -602,7 +617,7 @@ elif hyper_parameters["scheduler"] == "Step":
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = decay_steps, gamma = decay_rate)
 
 
-# In[ ]:
+
 
 
 if not config["fr_scratch"]:

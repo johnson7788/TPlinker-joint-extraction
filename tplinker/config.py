@@ -8,11 +8,11 @@ common = {
 #     "encoder": "BiLSTM",
     "encoder": "BERT", 
     "hyper_parameters": {
-        "shaking_type": "cat", # cat, cat_plus, cln, cln_plus; Experiments show that cat/cat_plus work better with BiLSTM, while cln/cln_plus work better with BERT. The results in the paper are produced by "cat". So, if you want to reproduce the results, "cat" is enough, no matter for BERT or BiLSTM.
-        "inner_enc_type": "lstm", # valid only if cat_plus or cln_plus is set. It is the way how to encode inner tokens between each token pairs. If you only want to reproduce the results, just leave it alone.
-        "dist_emb_size": -1, # -1: do not use distance embedding; other number: need to be larger than the max_seq_len of the inputs. set -1 if you only want to reproduce the results in the paper.
-        "ent_add_dist": False, # set true if you want add distance embeddings for each token pairs. (for entity decoder)
-        "rel_add_dist": False, # the same as above (for relation decoder)
+        "shaking_type": "cat", # cat, cat_plus, cln, cln_plus; 实验表明，cat/cat_plus与BiLSTM的效果更好, 而cln/cln_plus与BERT的工作效果更好。论文中的结果是由 "cat "产生的。因此，如果你想重现这些结果，"cat "就足够了，不管是对BERT还是BiLSTM。
+        "inner_enc_type": "lstm", # 只有当cat_plus或cln_plus被设置时才有效。这是如何对每个token对之间的内部token进行编码的方法。如果你只想重现结果，就不要管它了。
+        "dist_emb_size": -1, # -1表示不使用距离嵌入；其他数字：需要大于输入的max_seq_len。如果你只想复制论文中的结果，则设置-1。
+        "ent_add_dist": False, # 如果你想为每个token对添加距离嵌入，则设置为true。(用于实体解码器)
+        "rel_add_dist": False, # 与上述相同（用于关系解码器）
         "match_pattern": "only_head_text", # only_head_text (nyt_star, webnlg_star), whole_text (nyt, webnlg), only_head_index, whole_span
     },
 }

@@ -314,7 +314,7 @@ class DataMaker4Bert():
     def generate_batch(self, batch_data, data_type = "train"):
         """
         会被collate_fn函数调用，对数据进行最终处理
-        :param batch_data:
+        :param batch_data: 一个批次的数据， 格式是 sample, input_ids, attention_mask,token_type_ids, tok2char_span, spots_tuple,
         :type batch_data:
         :param data_type:
         :type data_type:
@@ -337,14 +337,14 @@ class DataMaker4Bert():
             attention_mask_list.append(tp[2])        
             token_type_ids_list.append(tp[3])        
             tok2char_span_list.append(tp[4])
-            
+            # 如果是训练集或验证集，都加入label信息
             if data_type != "test":
                 ent_matrix_spots, head_rel_matrix_spots, tail_rel_matrix_spots = tp[5]
                 ent_spots_list.append(ent_matrix_spots)
                 head_rel_spots_list.append(head_rel_matrix_spots)
                 tail_rel_spots_list.append(tail_rel_matrix_spots)
 
-        # @specific: indexed by bert tokenizer
+        # @specific: indexed by bert tokenizer， 把一个批次的数据组成一个
         batch_input_ids = torch.stack(input_ids_list, dim = 0)
         batch_attention_mask = torch.stack(attention_mask_list, dim = 0)
         batch_token_type_ids = torch.stack(token_type_ids_list, dim = 0)
@@ -428,13 +428,13 @@ class TPLinkerBert(nn.Module):
                  rel_add_dist
                 ):
         super().__init__()
-        self.encoder = encoder
+        self.encoder = encoder   #加载后的bert模型
+        # 隐藏层，神经元数量
         hidden_size = encoder.config.hidden_size
-        
-        self.ent_fc = nn.Linear(hidden_size, 2)
-        self.head_rel_fc_list = [nn.Linear(hidden_size, 3) for _ in range(rel_size)]
-        self.tail_rel_fc_list = [nn.Linear(hidden_size, 3) for _ in range(rel_size)]
-        
+        self.ent_fc = nn.Linear(hidden_size, 2)  #实体的分类器
+        self.head_rel_fc_list = [nn.Linear(hidden_size, 3) for _ in range(rel_size)]   # 主语头到宾语头（SH-to-OH）的分类器，3分类， 有多少关系，就构建多少分类器
+        self.tail_rel_fc_list = [nn.Linear(hidden_size, 3) for _ in range(rel_size)]  # 主语尾部到宾语尾部（ST-to-OT）的分类器，3分类， 有多少关系，就构建多少分类器
+        # 把对应参数加入到模型中
         for ind, fc in enumerate(self.head_rel_fc_list):
             self.register_parameter("weight_4_head_rel{}".format(ind), fc.weight)
             self.register_parameter("bias_4_head_rel{}".format(ind), fc.bias)
@@ -442,13 +442,13 @@ class TPLinkerBert(nn.Module):
             self.register_parameter("weight_4_tail_rel{}".format(ind), fc.weight)
             self.register_parameter("bias_4_tail_rel{}".format(ind), fc.bias)
             
-        # handshaking kernel
+        # handshaking kernel, 初始化HandshakingKernel模型
         self.handshaking_kernel = HandshakingKernel(hidden_size, shaking_type, inner_enc_type)
         
-                # distance embedding
+        # 距离嵌入
         self.dist_emb_size = dist_emb_size
         self.dist_embbedings = None # it will be set in the first forwarding
-        
+        # bool值： 如果你想为每个token对添加距离嵌入，则设置为true。(用于实体解码器)
         self.ent_add_dist = ent_add_dist
         self.rel_add_dist = rel_add_dist
         
