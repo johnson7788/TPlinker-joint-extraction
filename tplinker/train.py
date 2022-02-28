@@ -487,7 +487,7 @@ def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_ep
             t_batch = time.time()  # 一个批次的开始时间
             z = (2 * len(rel2id) + 1)   # 实际转换成2N+1个序列标注任务，N表示预先定义的关系类型的数量，
             steps_per_ep = len(dataloader)
-            # 为了加快训练速度, EH-to-ET 的损失比重是比其它在开始的时候要高， 但是在训练了loss_weight_recover_steps个step之后，损失的比重变正常
+            # 为了加快训练速度, EH-to-ET 的损失比重是比其它在开始的时候要高， 但是在训练了loss_weight_recover_steps个step之后，损失的比重变正常,  eg:  total_steps: 6001
             total_steps = hyper_parameters["loss_weight_recover_steps"] + 1 # + 1 avoid division by zero error
             #
             current_step = steps_per_ep * ep + batch_ind
