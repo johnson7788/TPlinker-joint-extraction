@@ -73,24 +73,44 @@ class Preprocessor:
         return self._clean_sp_char(normal_sample_list)
     
     def split_into_short_samples(self, sample_list, max_seq_len, sliding_len = 50, encoder = "BERT", data_type = "train"):
+        """
+        处理数据，长的句子变成短的句子
+        :param sample_list: 数据集, 一条数据的示例
+        00000 = {dict: 4} {'text': 'Massachusetts ASTON MAGNA Great Barrington ; also at Bard College , Annandale-on-Hudson , N.Y. , July 1-Aug .', 'id': 'train_0', 'relation_list': [{'subject': 'Annandale-on-Hudson', 'object': 'College', 'subj_char_span': [68, 87], 'obj_char_span'
+ 'text' = {str} 'Massachusetts ASTON MAGNA Great Barrington ; also at Bard College , Annandale-on-Hudson , N.Y. , July 1-Aug .'
+ 'id' = {str} 'train_0'
+ 'relation_list' = {list: 1} [{'subject': 'Annandale-on-Hudson', 'object': 'College', 'subj_char_span': [68, 87], 'obj_char_span': [58, 65], 'predicate': '/location/location/contains', 'subj_tok_span': [17, 24], 'obj_tok_span': [15, 16]}]
+ 'entity_list' = {list: 2} [{'text': 'Annandale-on-Hudson', 'type': 'DEFAULT', 'char_span': [68, 87], 'tok_span': [17, 24]}, {'text': 'College', 'type': 'DEFAULT', 'char_span': [58, 65], 'tok_span': [15, 16]}]
+        :type sample_list: list
+        :param max_seq_len: 100  拆分后的最大序列长度
+        :type max_seq_len:
+        :param sliding_len: 滑动的字符的大小， eg: 20
+        :type sliding_len:
+        :param encoder: eg: 'BERT'
+        :type encoder:str
+        :param data_type: eg: 'train'
+        :type data_type:str
+        :return:
+        :rtype:
+        """
         new_sample_list = []
-        for sample in tqdm(sample_list, desc = "Splitting into subtexts"):
-            text_id = sample["id"]
-            text = sample["text"]
-            tokens = self._tokenize(text)
-            tok2char_span = self._get_tok2char_span_map(text)
+        for sample in tqdm(sample_list, desc = "开始拆分成小短句"):
+            text_id = sample["id"]   #eg: 'train_0'
+            text = sample["text"]    # eg: 'Massachusetts ASTON MAGNA Great Barrington ; also at Bard College , Annandale-on-Hudson , N.Y. , July 1-Aug .'
+            tokens = self._tokenize(text)   # 变成token, eg: ['Massachusetts', 'AS', '##TO', '##N', 'MA', '##G', '##NA', 'Great', 'Barr', '##ington', ';', 'also', 'at', 'Bar', '##d', 'College', ',', 'Anna', '##nda', '##le', '-', 'on', '-', 'Hudson', ',', 'N', '.', 'Y', '.', ',', 'July', '1', '-', 'Aug', '.']
+            tok2char_span = self._get_tok2char_span_map(text)  # 获取每个token的长度 # eg: [(0, 13), (14, 16), (16, 18), (18, 19), (20, 22), (22, 23), (23, 25), (26, 31), (32, 36), (36, 42), (43, 44), (45, 49), (50, 52), (53, 56), (56, 57), (58, 65), (66, 67), (68, 72), (72, 75), (75, 77), (77, 78), (78, 80), (80, 81), (81, 87), (88, 89), (90, 91), (91, 92), (92, 93), (93, 94), (95, 96), (97, 101), (102, 103), (103, 104), (104, 107), (108, 109)]
 
-            # sliding at token level
+            # token级别滑动
             split_sample_list = []
             for start_ind in range(0, len(tokens), sliding_len):
                 if encoder == "BERT": # if use bert, do not split a word into two samples
                     while "##" in tokens[start_ind]:
                         start_ind -= 1
                 end_ind = start_ind + max_seq_len
-
+                # 获取部分长度对应的token的长度 [(0, 13), (14, 16), (16, 18), (18, 19), (20, 22), (22, 23), (23, 25), (26, 31), (32, 36), (36, 42), (43, 44), (45, 49), (50, 52), (53, 56), (56, 57), (58, 65), (66, 67), (68, 72), (72, 75), (75, 77), (77, 78), (78, 80), (80, 81), (81, 87), (88, 89), (90, 91), (91, 92), (92, 93), (93, 94), (95, 96), (97, 101), (102, 103), (103, 104), (104, 107), (108, 109)]
                 char_span_list = tok2char_span[start_ind:end_ind]
-                char_level_span = [char_span_list[0][0], char_span_list[-1][1]]
-                sub_text = text[char_level_span[0]:char_level_span[1]]
+                char_level_span = [char_span_list[0][0], char_span_list[-1][1]]   # eg: [0, 109]， 总共的字符的长度
+                sub_text = text[char_level_span[0]:char_level_span[1]]  # 原始文本进行对应裁剪, 'Massachusetts ASTON MAGNA Great Barrington ; also at Bard College , Annandale-on-Hudson , N.Y. , July 1-Aug .'
 
                 new_sample = {
                     "id": text_id,
@@ -101,15 +121,16 @@ class Preprocessor:
                 if data_type == "test": # test set
                     if len(sub_text) > 0:
                         split_sample_list.append(new_sample)
-                else: # train or valid dataset, only save spo and entities in the subtext
-                    # spo
+                else: # 训练集合验证集的数据，要把spo信息加入
+                    # spo， 对应关系
                     sub_rel_list = []
                     for rel in sample["relation_list"]:
-                        subj_tok_span = rel["subj_tok_span"]
-                        obj_tok_span = rel["obj_tok_span"]
-                        # if subject and object are both in this subtext, add this spo to new sample
+                        subj_tok_span = rel["subj_tok_span"]   #eg: [17, 24]
+                        obj_tok_span = rel["obj_tok_span"]   #eg: [15, 16]
+                        # 如果主语和宾语都在这个子句中，就把这spo添加到新的样本中。
                         if subj_tok_span[0] >= start_ind and subj_tok_span[1] <= end_ind \
-                            and obj_tok_span[0] >= start_ind and obj_tok_span[1] <= end_ind: 
+                            and obj_tok_span[0] >= start_ind and obj_tok_span[1] <= end_ind:
+                            # 拷贝这条关系数据，然后修改对应的起始和结束位置
                             new_rel = copy.deepcopy(rel)
                             new_rel["subj_tok_span"] = [subj_tok_span[0] - start_ind, subj_tok_span[1] - start_ind] # start_ind: tok level offset
                             new_rel["obj_tok_span"] = [obj_tok_span[0] - start_ind, obj_tok_span[1] - start_ind]
@@ -119,11 +140,11 @@ class Preprocessor:
                             new_rel["obj_char_span"][1] -= char_level_span[0]
                             sub_rel_list.append(new_rel)
                     
-                    # entity
+                    # entity，对应实体
                     sub_ent_list = []
                     for ent in sample["entity_list"]:
                         tok_span = ent["tok_span"]
-                        # if entity in this subtext, add the entity to new sample
+                        # 如果这个实体在这个子句中，那么把实体加入这个样本
                         if tok_span[0] >= start_ind and tok_span[1] <= end_ind: 
                             new_ent = copy.deepcopy(ent)
                             new_ent["tok_span"] = [tok_span[0] - start_ind, tok_span[1] - start_ind]
@@ -133,7 +154,7 @@ class Preprocessor:
 
                             sub_ent_list.append(new_ent)
                     
-                    # event
+                    # 事件
                     if "event_list" in sample:
                         sub_event_list = []
                         for event in sample["event_list"]:

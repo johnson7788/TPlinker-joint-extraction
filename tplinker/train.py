@@ -132,20 +132,21 @@ preprocessor = Preprocessor(tokenize_func = tokenize, get_tok2char_span_map_func
 
 
 
-# train and valid max token num
+# 验证训练集和测试集的token长度
 max_tok_num = 0
 all_data = train_data + valid_data 
-    
+
 for sample in all_data:
     tokens = tokenize(sample["text"])
     max_tok_num = max(max_tok_num, len(tokens))
-max_tok_num
+print(f"总的数据量是: {len(all_data)}， 最大的token的数量是: {max_tok_num}")
 
 
-# In[ ]:
+
 
 
 if max_tok_num > hyper_parameters["max_seq_len"]:
+    # 如果句子的最大长度超过我们的超参数，对句子进行滑动的截断，生成多个子句
     train_data = preprocessor.split_into_short_samples(train_data, 
                                                           hyper_parameters["max_seq_len"], 
                                                           sliding_len = hyper_parameters["sliding_len"], 
@@ -158,27 +159,28 @@ if max_tok_num > hyper_parameters["max_seq_len"]:
                                                          )
 
 
-# In[ ]:
 
-
-print("train: {}".format(len(train_data)), "valid: {}".format(len(valid_data)))
+print("训练数据的形状: {}".format(len(train_data)), "验证集的形状: {}".format(len(valid_data)))
 
 
 # # Tagger (Decoder)
 
-# In[ ]:
 
-
+# 最大序列长度
 max_seq_len = min(max_tok_num, hyper_parameters["max_seq_len"])
+
+# 关系到id的映射
 rel2id = json.load(open(rel2id_path, "r", encoding = "utf-8"))
+
+# 初始化一些标注的标签
 handshaking_tagger = HandshakingTaggingScheme(rel2id = rel2id, max_seq_len = max_seq_len)
 
 
 # # Dataset
 
-# In[ ]:
 
 
+# DataMaker4Bert
 if config["encoder"] == "BERT":
     tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens = False, do_lower_case = False)
     data_maker = DataMaker4Bert(tokenizer, handshaking_tagger)
@@ -202,9 +204,9 @@ elif config["encoder"] in {"BiLSTM", }:
     data_maker = DataMaker4BiLSTM(text2indices, get_tok2char_span_map, handshaking_tagger)
 
 
-# In[ ]:
 
 
+# 数据集
 class MyDataset(Dataset):
     def __init__(self, data):
         self.data = data
@@ -216,11 +218,11 @@ class MyDataset(Dataset):
         return len(self.data)
 
 
-# In[ ]:
 
 
-indexed_train_data = data_maker.get_indexed_data(train_data, max_seq_len)
-indexed_valid_data = data_maker.get_indexed_data(valid_data, max_seq_len)
+
+indexed_train_data = data_maker.get_indexed_data(train_data, max_seq_len, data_type = "train")
+indexed_valid_data = data_maker.get_indexed_data(valid_data, max_seq_len, data_type = "valid")
 
 
 # In[ ]:

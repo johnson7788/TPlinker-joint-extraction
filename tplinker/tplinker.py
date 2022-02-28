@@ -12,20 +12,29 @@ import math
 class HandshakingTaggingScheme(object):
     """docstring for HandshakingTaggingScheme"""
     def __init__(self, rel2id, max_seq_len):
+        """
+        数据标注的算法
+        :param rel2id:
+        :type rel2id:
+        :param max_seq_len:
+        :type max_seq_len:
+        """
         super(HandshakingTaggingScheme, self).__init__()
+        # 关系到id的映射
         self.rel2id = rel2id
+        # id到关系的映射
         self.id2rel = {ind:rel for rel, ind in rel2id.items()}
-
+        # 实体头到实体尾的id映射
         self.tag2id_ent = {
             "O": 0,
-            "ENT-H2T": 1, # entity head to entity tail
+            "ENT-H2T": 1, # 实体头到实体尾
         }
         self.id2tag_ent = {id_:tag for tag, id_ in self.tag2id_ent.items()}
 
         self.tag2id_head_rel = {
             "O": 0,
-            "REL-SH2OH": 1, # subject head to object head
-            "REL-OH2SH": 2, # object head to subject head
+            "REL-SH2OH": 1, # subject头 to object 头
+            "REL-OH2SH": 2, # object 头 to subject 头
         }
         self.id2tag_head_rel = {id_:tag for tag, id_ in self.tag2id_head_rel.items()}
 
@@ -36,12 +45,13 @@ class HandshakingTaggingScheme(object):
         }
         self.id2tag_tail_rel = {id_:tag for tag, id_ in self.tag2id_tail_rel.items()}
 
-        # mapping shaking sequence and matrix
+        # 映射到 shaking 序列和矩阵
         self.matrix_size = max_seq_len
-        # e.g. [(0, 0), (0, 1), (0, 2), (1, 1), (1, 2), (2, 2)]
+        # 初始化一个shaking序列到矩阵的映射e.g. [(0, 0), (0, 1), (0, 2), (1, 1), (1, 2), (2, 2)]， 长度是:5050
         self.shaking_ind2matrix_ind = [(ind, end_ind) for ind in range(self.matrix_size) for end_ind in list(range(self.matrix_size))[ind:]]
-
+        # 初始化一个矩阵到shaking序列的映射, 形状100 * 100
         self.matrix_ind2shaking_ind = [[0 for i in range(self.matrix_size)] for j in range(self.matrix_size)]
+        # 更新下矩阵到序列的映射
         for shaking_ind, matrix_ind in enumerate(self.shaking_ind2matrix_ind):
             self.matrix_ind2shaking_ind[matrix_ind[0]][matrix_ind[1]] = shaking_ind
 
@@ -257,8 +267,19 @@ class DataMaker4Bert():
         self.handshaking_tagger = handshaking_tagger
     
     def get_indexed_data(self, data, max_seq_len, data_type = "train"):
+        """
+        生成索引
+        :param data:
+        :type data:
+        :param max_seq_len:
+        :type max_seq_len:
+        :param data_type:
+        :type data_type:
+        :return:
+        :rtype:
+        """
         indexed_samples = []
-        for ind, sample in tqdm(enumerate(data), desc = "Generate indexed train or valid data"):
+        for ind, sample in tqdm(enumerate(data), desc = f"生成{data_type}数据的索引"):
             text = sample["text"]
             # codes for bert input
             codes = self.tokenizer.encode_plus(text, 
@@ -267,7 +288,6 @@ class DataMaker4Bert():
                                     max_length = max_seq_len, 
                                     truncation = True,
                                     pad_to_max_length = True)
-
 
             # tagging
             spots_tuple = None
