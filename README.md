@@ -4,9 +4,9 @@
 
 This repository contains all the code of the official implementation for the paper: **[TPLinker: Single-stage Joint Extraction of Entities and Relations Through Token Pair Linking](https://www.aclweb.org/anthology/2020.coling-main.138.pdf).** The paper has been accepted to appear at **COLING 2020**. \[[slides](https://drive.google.com/file/d/1UAIVkuUgs122k02Ijln-AtaX2mHz70N-/view?usp=sharing)\] \[[poster](https://drive.google.com/file/d/1iwFfXZDjwEz1kBK8z1To_YBWhfyswzYU/view?usp=sharing)\]
 
-TPLinker is a joint extraction model resolved the issues of **relation overlapping** and **nested entities**, immune to the influence of **exposure bias**, and achieves SOTA performance on NYT (TPLinker: **91.9**, TPlinkerPlus: **92.6 (+3.0)**) and WebNLG (TPLinker: **91.9**, TPlinkerPlus: **92.3 (+0.5)**).  Note that the details of TPLinkerPlus will be published in the extended paper, which is still in progress.
+TPLinker是一个联合抽取模型，解决了**关系重叠**和**嵌套实体**的问题，不受**曝光偏差的影响，并在纽约时报上取得了SOTA性能（TPLinker。**91.9**, TPlinkerPlus: **92.6（+3.0）**）和WebNLG（TPLinker: **91.9**, TPlinkerPlus: **92.3 (+0.5)**).  请注意，TPLinkerPlus的细节将在扩展论文中发表，该论文仍在进行中。
+**注：在提出新问题之前，请参考Q&A和已关闭的问题，以找到您的问题。
 
-**Note: Please refer to Q&A and closed issues to find your question before proposed a new issue.**
 
 - [Model](#model)
 - [Results](#results)
@@ -23,10 +23,11 @@ TPLinker is a joint extraction model resolved the issues of **relation overlappi
 - [Q&A](#frequently-asked-questions)
 
 ## Update
-* 2020.11.01: Fixed bugs and added comments in BuildData.ipynb and build_data_config.yaml; TPLinkerPlus can support entity classification now, see [build data](#build-data) for the data format; Updated the [datasets](#download-data) (added `entity_list` for TPLinkerPlus).
-* 2020.12.04: The original default parameters in `build_data_config.yaml` are all for Chinese datasets. It might be misleading for reproducing the results. I changed back to the ones for English datasets. **Note that you must set `ignore_subword` to `true` for English datasets**, or it will hurt the performance and can not reach the scores reported in the paper.
-* 2020.12.09: We published model states for fast tests. See [Super Parameters](#super-parameters).
-* 2021.03.22: Add Q&A part in README.
+* 2020.11.01: 修复了BuildData.ipynb和build_data_config.yaml中的错误并添加了注释；TPLinkerPlus现在可以支持实体分类，数据格式见[build data](#build-data)；更新了[datasets](#download-data)（为TPLinkerPlus添加`entity_list`）。
+* 2020.12.04: `build_data_config.yaml`中原来的默认参数都是针对中文数据集的。这可能会对再现结果产生误导。我改回了用于英文数据集的参数。**注意，对于英文数据集，你必须将 "忽略子词 "设置为 "true"，否则会影响性能，无法达到论文中报告的分数。
+* 2020.12.09: 我们公布了快速测试的模型状态。见[超级参数](#super-parameters)。
+* 2021.03.22: 在README中增加问答部分。
+
 
 ## Model
 <p align="center">
@@ -48,8 +49,8 @@ TPLinker is a joint extraction model resolved the issues of **relation overlappi
 
 ## Usage
 ### Prerequisites
-Our experiments are conducted on Python 3.6 and Pytorch == 1.6.0. 
-The main requirements are:
+我们的实验是在Python 3.6和Pytorch == 1.6.0上进行的。
+主要的要求是：
 * tqdm
 * glove-python-binary==0.2.0
 * transformers==3.0.2
@@ -61,34 +62,35 @@ In the root directory, run
 pip install -e .
 ```
 ### Data
-#### download data
-Get and preprocess NYT* and WebNLG* following [CasRel](https://github.com/weizhepei/CasRel/tree/master/data) (note: named NYT and WebNLG by CasRel).
-Take NYT* as an example, rename train_triples.json and dev_triples.json to train_data.json and valid_data.json and move them to `ori_data/nyt_star`, put all test*.json under `ori_data/nyt_star/test_data`. The same process goes for WebNLG*.
+#### 下载数据
+按照[CasRel](https://github.com/weizhepei/CasRel/tree/master/data)获取并预处理NYT*和WebNLG*（注意：由CasRel命名为NYT和WebNLG）。
+以NYT*为例，将train_triples.json和dev_triples.json重命名为train_data.json和valid_data.json，并将其移至`ori_data/nyt_star`，将所有test*.json置于`ori_data/nyt_star/test_data`下。WebNLG*的过程也是如此。
 
 Get raw NYT from [CopyRE](https://github.com/xiangrongzeng/copy_re),  rename raw_train.json and raw_valid.json to train_data.json and valid_data.json and move them to `ori_data/nyt`, rename raw_test.json to test_data.json and put it under `ori_data/nyt/test_data`.
 
 Get WebNLG from [ETL-Span](https://github.com/yubowen-ph/JointER/tree/master/dataset/WebNLG/data), rename train.json and dev.json to train_data.json and valid_data.json and move them to `ori_data/webnlg`, rename test.json to test_data.json and put it under `ori_data/webnlg/test_data`.
 
-If you are bother to prepare data on your own, you could download our preprocessed [datasets](https://drive.google.com/file/d/1RxBVMSTgBxhGyhaPEWPdtdX1aOmrUPBZ/view?usp=sharing).
+如果你麻烦自己准备数据，你可以下载我们预处理过的[数据集](https://drive.google.com/file/d/1RxBVMSTgBxhGyhaPEWPdtdX1aOmrUPBZ/view?usp=sharing)。
 
 #### build data
 Build data by `preprocess/BuildData.ipynb`.
-Set configuration in `preprocess/build_data_config.yaml`.
-In the configuration file, set `exp_name` corresponding to the directory name, set `ori_data_format` corresponding to the source project name of the data. 
-e.g. To build NYT*, set `exp_name` to `nyt_star` and set `ori_data_format` to `casrel`. See `build_data_config.yaml` for more details.
-If you want to run on other datasets, transform them into the normal format for TPLinker, then set `exp_name` to `<your folder name>` and set `ori_data_format` to `tplinker`:
+设置配置 in `preprocess/build_data_config.yaml`.
+在配置文件中，设置`exp_name`对应于目录名称，设置`ori_data_format`对应于数据的源项目名称。
+例如，要建立NYT*，设置`exp_name`为`nyt_star`，设置`ori_data_format`为`casrel`。更多细节见`build_data_config.yaml`。
+如果你想在其他数据集上运行，将它们转化为TPLinker的正常格式，然后将`exp_name`设置为`<你的文件夹名称>`，并将`ori_data_format`设置为`tplinker`。
+
 ```python
 [{
 "id": <text_id>,
 "text": <text>,
 "relation_list": [{
     "subject": <subject>,
-    "subj_char_span": <character level span of the subject>, # e.g [3, 10] This key is optional. If no this key, set "add_char_span" to true in "build_data_config.yaml" when you build the data
+    "subj_char_span": <character level span of the subject>, # e.g [3, 10] 这个是可选的。如果没有这个键，在构建数据时，在 "build_data_config.yaml "中把 "add_char_span "设置为true。
     "object": <object>,
     "obj_char_span": <character level span of the object>, # optional
     "predicate": <predicate>,
  }],
-"entity_list": [{ # This key is optional, only for TPLinkerPlus. If no this key, BuildData.ipynb will auto genrate a entity list based on the relation list.
+"entity_list": [{ # 这个是可选的，只适用于TPLinkerPlus。如果没有这个键，BuildData.ipynb将根据关系列表自动生成一个实体列表。
     "text": <entity>,
     "type": <entity_type>,
     "char_span": <character level span of the object>, # This key relys on subj_char_span and obj_char_span in relation_list, if not given, set "add_char_span" to true in "build_data_config.yaml".
@@ -96,13 +98,13 @@ If you want to run on other datasets, transform them into the normal format for 
 }]
 ```
 
-### Pretrained Model and Word Embeddings
-Download [BERT-BASE-CASED](https://huggingface.co/bert-base-cased) and put it under `../pretrained_models`. Pretrain word embeddings by `preprocess/Pretrain_Word_Embedding.ipynb` and put models under `../pretrained_emb`.
+### 预训练模型和词嵌入
+下载  [BERT-BASE-CASED](https://huggingface.co/bert-base-cased) and put it under `../pretrained_models`. Pretrain word embeddings by `preprocess/Pretrain_Word_Embedding.ipynb` and put models under `../pretrained_emb`.
 
-If you are bother to train word embeddings by yourself, use [our's](https://drive.google.com/file/d/1IQu_tdqEdExqyaeXJ4QSjUbWPQ3kxZKE/view?usp=sharing) directly.
+如果你麻烦自己去训练词嵌入，可以直接使用[我们的](https://drive.google.com/file/d/1IQu_tdqEdExqyaeXJ4QSjUbWPQ3kxZKE/view?usp=sharing)。
 
 ### Train
-Set configuration in `tplinker/config.py` as follows:
+设置配置 `tplinker/config.py` 按如下方式:
 ```python
 common["exp_name"] = nyt_star # webnlg_star, nyt, webnlg
 common["device_num"] = 0 # 1, 2, 3 ...
@@ -110,19 +112,19 @@ common["encoder"] = "BERT" # BiLSTM
 train_config["hyper_parameters"]["batch_size"] = 24 # 6 for webnlg and webnlg_star
 train_config["hyper_parameters"]["match_pattern"] = "only_head_text" # "only_head_text" for webnlg_star and nyt_star; "whole_text" for webnlg and nyt.
 
-# if the encoder is set to BiLSTM
+# 如果使用的是BiLSTM,那么需要加载预训练word embedding
 bilstm_config["pretrained_word_embedding_path"] = ""../pretrained_word_emb/glove_300_nyt.emb""
 
 # Leave the rest as default
 ```
 
-Start training
+开始训练
 ```
 cd tplinker
 python train.py
 ```
 
-#### Super Parameters
+#### 超参数
 **TPLinker**
 ```
 # NYT*
@@ -301,30 +303,25 @@ Start evaluation by running `tplinker/Evaluation.ipynb`
 ```
 
 # Frequently Asked Questions
-1. Why did you make all entities to be "DEFAULT" type? TPLinker can not recognize the type of entities?
+1. 为什么你把所有的实体都变成了 "DEFAULT "类型？TPLinker不能识别实体的类型？
+因为对于关系抽取任务来说，没有必要识别实体的类型，因为一个预定义的关系通常有固定的主语和宾语类型。例如，（"地方"，"包含"，"地方"）和（"国家"，"首都"，"城市"）。如果你需要这个特征，你可以重新定义EH-to-ET序列的输出标签，或者使用TPLinkerPlus，它已经有了这个特征。如果你使用TPLinkerPlus，只需在entity_list中设置一个特定的实体类型而不是 "DEFAULT"。
 
-Because it is not necessary to recognize the type of entities for the relation extraction task since a predefined relation usually has fixed types for its subject and object. For example, ("place", "contains", "place") and ("country", "capital", "city"). If you need this feature, you can redefine the output tags of the EH-to-ET sequence or use TPLinkerPlus, which has already had this feature. If you use TPLinkerPlus, just set a specific entity type instead of "DEFAULT" in the entity_list.
+2. <dataset_name>_star和<dataset_name>之间有什么区别？
+为了进行公平的比较，我们使用以前的工作中的预处理数据。NYT来自[CopyRE](https://github.com/xiangrongzeng/copy_re)（原始版本）；WebNLG来自[ETL-span](https://github.com/yubowen-ph/JointER/tree/master/dataset/WebNLG/data)；NYT*和WebNLG*来自[CasRel](https://github.com/weizhepei/CasRel/tree/master/data) 。关于这些数据集的详细描述，请参考我们论文的数据描述部分。
+对NYT★和WebNLG★使用了部分匹配，如果主语实体和宾语实体的关系和头部都是正确的，就认为提取的三元祖是正确的；对NYT和WebNLG使用了精确匹配，需要对主语和宾语的整个跨度进行匹配
+   
+3. 以前的工作声称，WebNLG有246个关系。为什么你们使用关系较少的WebNLG和WebNLG*？
+我们直接使用之前SoTA模型预处理过的数据集。我们从他们的Github资源库中获取。我们重新计算了数据集中的关系，发现WebNLG和WebNLG*的真实关系数比他们在论文中声称的要少。事实上，他们使用的是一个子集（6000多个样本）WebNLG，而不是原始的WebNLG（10000多个样本），但使用的是原始的统计数据。如果你重新统计他们数据集中的关系，你也会发现这个问题。
+   
+4. 我的训练过程比你所说的慢得多（24小时）。你能给出任何建议吗？
+请使用我在README中提供的超参数来重现结果。如果你想改变它们，请使训练的max_seq_length小于或等于100。根据我的经验，将max_seq_length增加到大于100并没有带来明显的改善，反而对训练速度有很大的影响。使用较小的batch_size也会加快训练速度，但如果你使用太小的batch_size，可能会损害性能。
 
-2. What is the difference between <dataset_name>_star and <dataset_name>?
+5. 我看到你把长文拆成了短文。你可能会因为拆分而错过一些glod实体和关系。你是如何处理这个问题的？
+我们使用一个滑动窗口来分割样本，这将包含大部分的glod实体和关系。我们在训练和推理中使用不同的最大长度（max_seq_length）。前者被设置为100，后者被设置为512。训练时损失一两个实体或关系是可以的，这不会对训练产生太大影响。
 
-For fair comparison, we use the preprocessed data from previous works. NYT is from [CopyRE](https://github.com/xiangrongzeng/copy_re) (the raw version); WebNLG is from [ETL-span](https://github.com/yubowen-ph/JointER/tree/master/dataset/WebNLG/data); NYT* and WebNLG* are from [CasRel](https://github.com/weizhepei/CasRel/tree/master/data). For a detailed description of these datasets, please refer to the data description part of our paper.
 
-3. Previous works claim that WebNLG has 246 relations. Why do you use the WebNLG and WebNLG* that have less relations?
+6. 如何将这个模型用于中文的数据集？
+请参考问题#15。
 
-We directly use the datasets preprocessed by previous SoTA models. We get them from their Github repositories. We recounted the relations in the datasets and found out the real relation number of WebNLG and WebNLG* are less than they claimed in the papers. In fact, they use a subset (6000+ samples) WebNLG instead of the original WebNLG (10000+ samples) but use the statistics of the original one. If you re-count the relations in their datasets you will also find this problem.
-
-4. My training process is far slower than you claimed (24h). Could you give any suggestions?
-
-Please use the hyper-parameters I provided in README to reproduce the results. If you want to change them, please make the max_seq_length of training less than or equal to 100. From my experience, increasing the max_seq_length to larger than 100 did not bring obvious improvement but hurt the training speed so much. Using smaller batch_size will also speed up the training but it might hurt the performance if you use too small batch_size.
-
-5. I see you split the long text to short ones. You might miss some golden entities and relations by splitting. How do you handle this?
-
-We use a sliding window to split the samples, which will contain the most part of golden entities and relations. And we use different max_seq_length for training and inference. The former is set to 100 and the latter is set to 512. It is ok to lose one or two entities or relations when training, which will not influence the training too much.
-
-6. How to use this model for Chinese datasets?
-
-Please refer to issue #15.
-
-7. My f1 score stay at 0 for a very long time. Do you have any idea?
-
-Please refer to issue #24 and #25.
+7. 我的f1分数在很长时间内都是0。你有什么办法吗？
+请参考问题#24和#25。

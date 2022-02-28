@@ -28,7 +28,7 @@ from tplinker import (HandshakingTaggingScheme,
                       MetricsCalculator)
 import wandb
 import config
-from glove import Glove
+# from glove import Glove
 import numpy as np
 
 

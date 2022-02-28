@@ -73,8 +73,8 @@ eval_config = {
 }
 
 bert_config = {
-    "data_home": "../data4bert",
-    "bert_path": "../../pretrained_models/bert-base-cased",
+    "data_home": "data4bert",
+    "bert_path": "pretrained_models/bert-base-cased",
     "hyper_parameters": {
         "lr": 5e-5,
     },
