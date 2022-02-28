@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+
 
 
 import json
@@ -32,7 +32,7 @@ import config
 import numpy as np
 
 
-# In[ ]:
+
 
 
 # try:
@@ -42,41 +42,43 @@ import numpy as np
 # config = yaml.load(open("train_config.yaml", "r"), Loader = yaml.FullLoader)
 
 
-# In[ ]:
 
 
+# 加载config.py中的训练的配置
 config = config.train_config
+# 模型训练的超参数
 hyper_parameters = config["hyper_parameters"]
 
 
-# In[ ]:
-
+# 显卡配置
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 os.environ["CUDA_VISIBLE_DEVICES"] = str(config["device_num"])
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-# In[ ]:
 
 
-# for reproductivity
+
+# 复现实验
 torch.manual_seed(hyper_parameters["seed"]) # pytorch random seed
+# 确定性算法
 torch.backends.cudnn.deterministic = True
 
 
-# In[ ]:
 
-
+# eg: data4bert,
 data_home = config["data_home"]
-experiment_name = config["exp_name"]    
+# eg: nyt_star
+experiment_name = config["exp_name"]
+# eg: data4bert/nyt_star/train_data.json
 train_data_path = os.path.join(data_home, experiment_name, config["train_data"])
 valid_data_path = os.path.join(data_home, experiment_name, config["valid_data"])
+# 关系到id的映射
 rel2id_path = os.path.join(data_home, experiment_name, config["rel2id"])
 
 
-# In[ ]:
 
-
+# 使用wandb日志还是logging日志
 if config["logger"] == "wandb":
     # init wandb
     wandb.init(project = experiment_name, 
@@ -94,25 +96,20 @@ else:
     if not os.path.exists(model_state_dict_dir):
         os.makedirs(model_state_dict_dir)
 
-
-# # Load Data
-
-# In[ ]:
-
-
+# 加载数据集
 train_data = json.load(open(train_data_path, "r", encoding = "utf-8"))
 valid_data = json.load(open(valid_data_path, "r", encoding = "utf-8"))
 
 
 # # Split
-
-# In[ ]:
+# 进行tokenize，BERT或BiLSTM
 
 
 # @specific
 if config["encoder"] == "BERT":
     tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens = False, do_lower_case = False)
     tokenize = tokenizer.tokenize
+    # 设置一个tokenize的匿名函数
     get_tok2char_span_map = lambda text: tokenizer.encode_plus(text, return_offsets_mapping = True, add_special_tokens = False)["offset_mapping"]
 elif config["encoder"] in {"BiLSTM", }:
     tokenize = lambda text: text.split(" ")
@@ -126,14 +123,13 @@ elif config["encoder"] in {"BiLSTM", }:
         return tok2char_span
 
 
-# In[ ]:
 
 
-preprocessor = Preprocessor(tokenize_func = tokenize, 
-                            get_tok2char_span_map_func = get_tok2char_span_map)
+#  预处理
+preprocessor = Preprocessor(tokenize_func = tokenize, get_tok2char_span_map_func = get_tok2char_span_map)
 
 
-# In[ ]:
+
 
 
 # train and valid max token num

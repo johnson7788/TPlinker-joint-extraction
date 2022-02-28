@@ -53,7 +53,7 @@ TPLinker是一个联合抽取模型，解决了**关系重叠**和**嵌套实体
 主要的要求是：
 * tqdm
 * glove-python-binary==0.2.0
-* transformers==3.0.2
+* transformers==3.0.2  # 可以更高的版本
 * wandb # for logging the results
 * yaml
 

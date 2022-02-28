@@ -20,9 +20,9 @@ common["run_name"] = "{}+{}+{}".format("TP1", common["hyper_parameters"]["shakin
 
 run_id = ''.join(random.sample(string.ascii_letters + string.digits, 8))
 train_config = {
-    "train_data": "train_data.json",
-    "valid_data": "valid_data.json",
-    "rel2id": "rel2id.json",
+    "train_data": "train_data.json",  #训练集
+    "valid_data": "valid_data.json",  #验证集
+    "rel2id": "rel2id.json",  # 关系到id的映射
     "logger": "wandb", # if wandb, comment the following four lines
     
 #     # if logger is set as default, uncomment the following four lines
@@ -31,23 +31,23 @@ train_config = {
 #     "log_path": "./default_log_dir/default.log",
 #     "path_to_save_model": "./default_log_dir/{}".format(run_id),
 
-    # only save the model state dict if F1 score surpasses <f1_2_save>
+    # 保存模型，只有当f1 score大于当前值f1_2_save的时候
     "f1_2_save": 0, 
-    # whether train_config from scratch
+    # 是否根据配置文件，从头开始训练， 和model_state_dict_path相斥
     "fr_scratch": True,
-    # write down notes here if you want, it will be logged 
+    # 一些需要写到日志中的字符
     "note": "start from scratch",
-    # if not fr scratch, set a model_state_dict
+    # 如果不是scratch开始训练, 需要设定一个model_state_dict
     "model_state_dict_path": "",
     "hyper_parameters": {
         "batch_size": 6,
         "epochs": 100,
         "seed": 2333,
         "log_interval": 10,
-        "max_seq_len": 100,
+        "max_seq_len": 100,  #最大序列长度
         "sliding_len": 20,
-        "loss_weight_recover_steps": 6000, # to speed up the training process, the loss of EH-to-ET sequence is set higher than other sequences at the beginning, but it will recover in <loss_weight_recover_steps> steps.
-        "scheduler": "CAWR", # Step
+        "loss_weight_recover_steps": 6000, # 为了加快训练速度, EH-to-ET 的损失比重是比其它在开始的时候要高， 但是在训练了loss_weight_recover_steps个step之后，损失的比重变正常
+        "scheduler": "CAWR", # 学习率计划
     },
 }
 

@@ -24,8 +24,8 @@ class DefaultLogger:
         
 class Preprocessor:
     '''
-    1. transform the dataset to normal format, which can fit in our codes
-    2. add token level span to all entities in the relations, which will be used in tagging phase
+    1. 将数据集转换为正常格式，以适应我们的代码
+    2. 在所有关系中添加token span 头到所有实体， 将被用于标注阶段
     '''
     def __init__(self, tokenize_func, get_tok2char_span_map_func):
         self._tokenize = tokenize_func
