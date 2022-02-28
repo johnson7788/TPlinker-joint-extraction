@@ -457,12 +457,12 @@ class TPLinkerBert(nn.Module):
         # last_hidden_state: (batch_size, seq_len, hidden_size)
         last_hidden_state = context_outputs[0]
         
-        # shaking_hiddens: (batch_size, 1 + ... + seq_len, hidden_size)
+        # shaking_hiddens: (batch_size, 1 + ... + seq_len, hidden_size),  形状： torch.Size([6, 5050, 768])
         shaking_hiddens = self.handshaking_kernel(last_hidden_state)
         shaking_hiddens4ent = shaking_hiddens
         shaking_hiddens4rel = shaking_hiddens
         
-        # add distance embeddings if it is set
+        # 当不为-1时，加上，距离embedding
         if self.dist_emb_size != -1:
             # set self.dist_embbedings
             hidden_size = shaking_hiddens.size()[-1]
@@ -493,17 +493,17 @@ class TPLinkerBert(nn.Module):
 #             shaking_hiddens4rel = shaking_hiddens + self.dist_embbedings[None,:,:].repeat(shaking_hiddens.size()[0], 1, 1)
 #         else:
 #             shaking_hiddens4rel = shaking_hiddens
-            
+        # 实体的预测， 形状torch.Size([6, 5050, 2])
         ent_shaking_outputs = self.ent_fc(shaking_hiddens4ent)
-            
+        # 关系的预测，主语头到宾语头（SH-to-OH）的分类器
         head_rel_shaking_outputs_list = []
-        for fc in self.head_rel_fc_list:
+        for fc in self.head_rel_fc_list:  #每个关系预测一个向量，形状torch.Size([6, 5050, 3])
             head_rel_shaking_outputs_list.append(fc(shaking_hiddens4rel))
-            
+        # 关系的预测, 主语尾部和宾语尾部分类
         tail_rel_shaking_outputs_list = []
         for fc in self.tail_rel_fc_list:
             tail_rel_shaking_outputs_list.append(fc(shaking_hiddens4rel))
-        
+        # 在维度1上拼接， 形状[ batch_size, relation_nums, 5050, 3], 5050是序列长度的累加
         head_rel_shaking_outputs = torch.stack(head_rel_shaking_outputs_list, dim = 1)
         tail_rel_shaking_outputs = torch.stack(tail_rel_shaking_outputs_list, dim = 1)
         

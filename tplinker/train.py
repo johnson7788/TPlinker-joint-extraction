@@ -341,21 +341,24 @@ def train_step(batch_train_data, optimizer, loss_weights):
     optimizer.zero_grad()
 
     if config["encoder"] == "BERT":
+        # 实体头到实体尾（EH-to-ET）， 主语头到宾语头（SH-to-OH），主语尾部到宾语尾部（ST-to-OT），三个向量的预测
+        # ent_shaking_outputs: 形状torch.Size([6, 5050, 2]), head_rel_shaking_outputs和tail_rel_shaking_outputs  形状[ batch_size, relation_nums, 5050, 3], 5050是序列长度的累加
         ent_shaking_outputs, head_rel_shaking_outputs, tail_rel_shaking_outputs = rel_extractor(batch_input_ids,
                                                                                                 batch_attention_mask,
                                                                                                 batch_token_type_ids,
                                                                                                 )
     elif config["encoder"] in {"BiLSTM", }:
         ent_shaking_outputs, head_rel_shaking_outputs, tail_rel_shaking_outputs = rel_extractor(batch_input_ids)
-
+    # 读取损失的权重
     w_ent, w_rel = loss_weights["ent"], loss_weights["rel"]
+    # 计算损失
     loss = w_ent * loss_func(ent_shaking_outputs, batch_ent_shaking_tag) + w_rel * loss_func(head_rel_shaking_outputs,
                                                                                              batch_head_rel_shaking_tag) + w_rel * loss_func(
         tail_rel_shaking_outputs, batch_tail_rel_shaking_tag)
 
     loss.backward()
     optimizer.step()
-
+    # 分别计算3个任务的损失
     ent_sample_acc = metrics.get_sample_accuracy(ent_shaking_outputs,
                                                  batch_ent_shaking_tag)
     head_rel_sample_acc = metrics.get_sample_accuracy(head_rel_shaking_outputs,
