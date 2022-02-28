@@ -136,18 +136,18 @@ class HandshakingKernel(nn.Module):
         '''
         seq_hiddens: (batch_size, seq_len, hidden_size)
         return:
-            shaking_hiddenss: (batch_size, (1 + seq_len) * seq_len / 2, hidden_size) (32, 5+4+3+2+1, 5)
+            shaking_hiddenss: (batch_size, (1 + seq_len) * seq_len / 2, hidden_size) (32, 5+4+3+2+1, 5), 每个任务的长度是\frac{n^2+n}{2}， n是句子长度
         '''
         seq_len = seq_hiddens.size()[-2]
-        shaking_hiddens_list = []
+        shaking_hiddens_list = [] # 例如序列长度是100，那么里面包含100个隐藏向量列表，每个向量的维度是 [batch_size, xx, hidden_size], xx是从100到1逐渐递减
         for ind in range(seq_len):
-            hidden_each_step = seq_hiddens[:, ind, :]
-            visible_hiddens = seq_hiddens[:, ind:, :] # ind: only look back
+            hidden_each_step = seq_hiddens[:, ind, :]  #形状： (batch_size, hidden_size)
+            visible_hiddens = seq_hiddens[:, ind:, :] #形状： (batch_size, xxxx, hidden_size) , ind表示，只查看后面的向量，
             repeat_hiddens = hidden_each_step[:, None, :].repeat(1, seq_len - ind, 1)  
-            
+            # 如果是cat模式，那么形状变成 torch.Size([6, 100, 1536])
             if self.shaking_type == "cat":
                 shaking_hiddens = torch.cat([repeat_hiddens, visible_hiddens], dim = -1)
-                shaking_hiddens = torch.tanh(self.combine_fc(shaking_hiddens))
+                shaking_hiddens = torch.tanh(self.combine_fc(shaking_hiddens))  # 变回隐藏向量的维度torch.Size([6, 100, 1536]) -->torch.Size([6, 100, 768])
             elif self.shaking_type == "cat_plus":
                 inner_context = self.enc_inner_hiddens(visible_hiddens, self.inner_enc_type)
                 shaking_hiddens = torch.cat([repeat_hiddens, visible_hiddens, inner_context], dim = -1)
@@ -160,5 +160,6 @@ class HandshakingKernel(nn.Module):
                 shaking_hiddens = self.inner_context_cln(shaking_hiddens, inner_context)
 
             shaking_hiddens_list.append(shaking_hiddens)
+        # 在维度1上拼接，即seq_len上拼接， 拼接后的维度, torch.Size([6, 5050, 768])
         long_shaking_hiddens = torch.cat(shaking_hiddens_list, dim = 1)
         return long_shaking_hiddens

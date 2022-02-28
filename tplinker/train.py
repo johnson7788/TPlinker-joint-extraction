@@ -199,14 +199,14 @@ indexed_valid_data = data_maker.get_indexed_data(valid_data, max_seq_len, data_t
 train_dataloader = DataLoader(MyDataset(indexed_train_data),
                               batch_size=hyper_parameters["batch_size"],
                               shuffle=True,
-                              num_workers=6,
+                              num_workers=0,
                               drop_last=False,
                               collate_fn=data_maker.generate_batch,
                               )
 valid_dataloader = DataLoader(MyDataset(indexed_valid_data),
                               batch_size=hyper_parameters["batch_size"],
                               shuffle=True,
-                              num_workers=6,
+                              num_workers=0,
                               drop_last=False,
                               collate_fn=data_maker.generate_batch,
                               )
@@ -451,7 +451,7 @@ def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_ep
             w_rel = min((len(rel2id) / z) * current_step / total_steps, (len(rel2id) / z))
             # 损失权重
             loss_weights = {"ent": w_ent, "rel": w_rel}
-
+            # 训练一个step
             loss, ent_sample_acc, head_rel_sample_acc, tail_rel_sample_acc = train_step(batch_train_data, optimizer,
                                                                                         loss_weights)
             scheduler.step()

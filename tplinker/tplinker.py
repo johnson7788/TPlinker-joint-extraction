@@ -452,7 +452,7 @@ class TPLinkerBert(nn.Module):
         self.rel_add_dist = rel_add_dist
         
     def forward(self, input_ids, attention_mask, token_type_ids):
-        # input_ids, attention_mask, token_type_ids: (batch_size, seq_len)
+        # input_ids, attention_mask, token_type_ids: 三个的形状都是 (batch_size, seq_len)
         context_outputs = self.encoder(input_ids, attention_mask, token_type_ids)
         # last_hidden_state: (batch_size, seq_len, hidden_size)
         last_hidden_state = context_outputs[0]
