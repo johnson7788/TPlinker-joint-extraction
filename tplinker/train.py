@@ -99,7 +99,9 @@ else:
 # 加载数据集
 train_data = json.load(open(train_data_path, "r", encoding = "utf-8"))
 valid_data = json.load(open(valid_data_path, "r", encoding = "utf-8"))
-
+# mini数据集
+train_data = train_data[:200]
+valid_data = valid_data[:100]
 
 # # Split
 # 进行tokenize，BERT或BiLSTM
@@ -220,14 +222,14 @@ class MyDataset(Dataset):
 
 
 
-
+#处理训练集和验证集数据: 样本标签通过handshaking_tagger进行标签转换，原文本tokenize到id的转换，生成一条样本数据
 indexed_train_data = data_maker.get_indexed_data(train_data, max_seq_len, data_type = "train")
 indexed_valid_data = data_maker.get_indexed_data(valid_data, max_seq_len, data_type = "valid")
 
 
-# In[ ]:
 
 
+# 封装成DataLoader
 train_dataloader = DataLoader(MyDataset(indexed_train_data), 
                                   batch_size = hyper_parameters["batch_size"], 
                                   shuffle = True, 
@@ -244,10 +246,10 @@ valid_dataloader = DataLoader(MyDataset(indexed_valid_data),
                          )
 
 
-# In[ ]:
 
 
-# # have a look at dataloader
+
+# 查看和验证下dataloader的数据
 # train_data_iter = iter(train_dataloader)
 # batch_data = next(train_data_iter)
 # text_id_list, text_list, batch_input_ids, \
@@ -269,14 +271,17 @@ valid_dataloader = DataLoader(MyDataset(indexed_valid_data),
 
 # # Model
 
-# In[ ]:
 
 
+# 模型
 if config["encoder"] == "BERT":
+    # 加载模型
     encoder = AutoModel.from_pretrained(config["bert_path"])
     hidden_size = encoder.config.hidden_size
+    # fake_inputs有啥用
     fake_inputs = torch.zeros([hyper_parameters["batch_size"], max_seq_len, hidden_size]).to(device)
-    rel_extractor = TPLinkerBert(encoder, 
+    #  初始化模型
+    rel_extractor = TPLinkerBert(encoder,
                                  len(rel2id), 
                                  hyper_parameters["shaking_type"],
                                  hyper_parameters["inner_enc_type"],

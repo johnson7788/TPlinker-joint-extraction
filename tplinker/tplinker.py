@@ -33,8 +33,8 @@ class HandshakingTaggingScheme(object):
 
         self.tag2id_head_rel = {
             "O": 0,
-            "REL-SH2OH": 1, # subject头 to object 头
-            "REL-OH2SH": 2, # object 头 to subject 头
+            "REL-SH2OH": 1, # subject头 to object 头  关系是有方向的，所以头实体到尾实体
+            "REL-OH2SH": 2, # object 头 to subject 头， 尾实体到头实体
         }
         self.id2tag_head_rel = {id_:tag for tag, id_ in self.tag2id_head_rel.items()}
 
@@ -56,23 +56,24 @@ class HandshakingTaggingScheme(object):
             self.matrix_ind2shaking_ind[matrix_ind[0]][matrix_ind[1]] = shaking_ind
 
     def get_spots(self, sample):
-        '''
-        entity spot and tail_rel spot: (span_pos1, span_pos2, tag_id)
-        head_rel spot: (rel_id, span_pos1, span_pos2, tag_id)
+        ''' 变成链接的标签类型
+        实体头到实体尾（EH-to-ET） 的格式: (span_pos1, span_pos2, tag_id)
+        主语头到宾语头（SH-to-OH） 和主语尾部到宾语尾部（ST-to-OT）的格式: (rel_id, span_pos1, span_pos2, tag_id)， rel_id是真正的关系的id
         '''
         ent_matrix_spots, head_rel_matrix_spots, tail_rel_matrix_spots = [], [], [] 
 
         for rel in sample["relation_list"]:
-            subj_tok_span = rel["subj_tok_span"]
-            obj_tok_span = rel["obj_tok_span"]
+            subj_tok_span = rel["subj_tok_span"]  #[17, 24]
+            obj_tok_span = rel["obj_tok_span"]  #[15, 16],
+            # 下面都是实体的头和实体尾标签
             ent_matrix_spots.append((subj_tok_span[0], subj_tok_span[1] - 1, self.tag2id_ent["ENT-H2T"]))
             ent_matrix_spots.append((obj_tok_span[0], obj_tok_span[1] - 1, self.tag2id_ent["ENT-H2T"]))
-
-            if  subj_tok_span[0] <= obj_tok_span[0]:
+            # 头实体头和尾实体头的位置不同时，它们的链接类型也不同， 主语头到宾语头（SH-to-OH）
+            if subj_tok_span[0] <= obj_tok_span[0]:
                 head_rel_matrix_spots.append((self.rel2id[rel["predicate"]], subj_tok_span[0], obj_tok_span[0], self.tag2id_head_rel["REL-SH2OH"]))
             else:
                 head_rel_matrix_spots.append((self.rel2id[rel["predicate"]], obj_tok_span[0], subj_tok_span[0], self.tag2id_head_rel["REL-OH2SH"]))
-                
+            # 主语的尾词和宾语的尾词的链接，主语尾部到宾语尾部（ST-to-OT）
             if subj_tok_span[1] <= obj_tok_span[1]:
                 tail_rel_matrix_spots.append((self.rel2id[rel["predicate"]], subj_tok_span[1] - 1, obj_tok_span[1] - 1, self.tag2id_tail_rel["REL-ST2OT"]))
             else:
@@ -268,7 +269,7 @@ class DataMaker4Bert():
     
     def get_indexed_data(self, data, max_seq_len, data_type = "train"):
         """
-        生成索引
+        样本标签通过handshaking_tagger进行标签转换，原文本tokenize到id的转换，生成一条样本数据
         :param data:
         :type data:
         :param max_seq_len:
@@ -280,8 +281,8 @@ class DataMaker4Bert():
         """
         indexed_samples = []
         for ind, sample in tqdm(enumerate(data), desc = f"生成{data_type}数据的索引"):
-            text = sample["text"]
-            # codes for bert input
+            text = sample["text"]  # 原始文本'Massachusetts ASTON MAGNA Great Barrington ; also at Bard College , Annandale-on-Hudson , N.Y. , July 1-Aug .'
+            # text 到id的映射，返回input_ids, token_type_ids, attention_mask, offset_mapping
             codes = self.tokenizer.encode_plus(text, 
                                     return_offsets_mapping = True, 
                                     add_special_tokens = False,
@@ -291,15 +292,15 @@ class DataMaker4Bert():
 
             # tagging
             spots_tuple = None
-            if data_type != "test":
+            if data_type != "test":  # 对于训练集和验证集，都要进行实体和关系的标签映射
                 spots_tuple = self.handshaking_tagger.get_spots(sample)
 
-            # get codes
+            #获取每个id
             input_ids = torch.tensor(codes["input_ids"]).long()
             attention_mask = torch.tensor(codes["attention_mask"]).long()
             token_type_ids = torch.tensor(codes["token_type_ids"]).long()
             tok2char_span = codes["offset_mapping"]
-
+            # 一条样本
             sample_tp = (sample,
                      input_ids,
                      attention_mask,
@@ -311,6 +312,15 @@ class DataMaker4Bert():
         return indexed_samples
  
     def generate_batch(self, batch_data, data_type = "train"):
+        """
+        会被collate_fn函数调用，对数据进行最终处理
+        :param batch_data:
+        :type batch_data:
+        :param data_type:
+        :type data_type:
+        :return:
+        :rtype:
+        """
         sample_list = []
         input_ids_list = []
         attention_mask_list = []
