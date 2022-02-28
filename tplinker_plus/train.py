@@ -28,42 +28,37 @@ from tplinker_plus import (HandshakingTaggingScheme,
                           TPLinkerPlusBiLSTM,
                           MetricsCalculator)
 import wandb
-from glove import Glove
+# from glove import Glove
 import numpy as np
 import config
 
 
-# In[ ]:
 
-
+# 加载config.py中的训练的配置
 config = config.train_config
+# 模型训练的超参数
 hyper_parameters = config["hyper_parameters"]
 
-
-# In[ ]:
-
-
+# 显卡配置
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 os.environ["CUDA_VISIBLE_DEVICES"] = str(config["device_num"])
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-
-# In[ ]:
-
-
-# for reproductivity
-torch.manual_seed(hyper_parameters["seed"]) # pytorch random seed
+# 复现实验
+torch.manual_seed(hyper_parameters["seed"])  # pytorch random seed
+# 确定性算法
 torch.backends.cudnn.deterministic = True
 
-
-# In[ ]:
-
-
+# eg: data4bert,
 data_home = config["data_home"]
-experiment_name = config["exp_name"]    
+# eg: nyt_star
+experiment_name = config["exp_name"]
+# eg: data4bert/nyt_star/train_data.json
 train_data_path = os.path.join(data_home, experiment_name, config["train_data"])
 valid_data_path = os.path.join(data_home, experiment_name, config["valid_data"])
+# 关系到id的映射
 rel2id_path = os.path.join(data_home, experiment_name, config["rel2id"])
+# 不同之处，实体到id的映射
 ent2id_path = os.path.join(data_home, experiment_name, config["ent2id"])
 
 
