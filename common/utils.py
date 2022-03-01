@@ -11,9 +11,10 @@ class DefaultLogger:
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         self.run_id = run_id
+        self.log(f"日志保存路径: {log_path}")
         self.log("============================================================================")
-        self.log("project: {}, run_name: {}, run_id: {}\n".format(project, run_name, run_id))
-        hyperparameters_format = "--------------hypter_parameters------------------- \n{}\n-----------------------------------------"
+        self.log("项目: {}, run_name: {}, run_id: {}\n".format(project, run_name, run_id))
+        hyperparameters_format = "--------------超参数------------------- \n{}\n-----------------------------------------"
         self.log(hyperparameters_format.format(json.dumps(hyperparameter, indent = 4)))
 
     def log(self, text):

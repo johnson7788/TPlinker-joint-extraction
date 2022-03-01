@@ -491,7 +491,7 @@ def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_ep
 
             avg_sample_acc = total_sample_acc / (batch_ind + 1)
 
-            batch_print_format = "\r项目: {}, 实验名字: {}, Epoch: {}/{}, batch: {}/{}, train_loss: {}, " + "训练样本准确率: {}," + "lr: {}, batch耗时: {}, 总耗时: {} -------------"
+            batch_print_format = "\r项目: {}, 实验名字: {}, Epoch: {}/{}, batch: {}/{}, train_loss: {}, " + "训练样本准确率: {}," + "lr: {}, batch耗时: {}秒, 总耗时: {}秒 -------------"
 
             print(batch_print_format.format(experiment_name, config["run_name"],
                                             ep + 1, num_epoch,
@@ -499,8 +499,8 @@ def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_ep
                                             avg_loss,
                                             avg_sample_acc,
                                             optimizer.param_groups[0]['lr'],
-                                            time.time() - t_batch,
-                                            time.time() - t_ep,
+                                            int(time.time() - t_batch),
+                                            int(time.time() - t_ep),
                                             ), end="")
 
             if config["logger"] == "wandb" and batch_ind % hyper_parameters["log_interval"] == 0:
