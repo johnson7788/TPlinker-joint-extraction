@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
-
-
 import json
 import os
 from tqdm import tqdm
@@ -31,8 +28,6 @@ import wandb
 # from glove import Glove
 import numpy as np
 import config
-
-
 
 # 加载config.py中的训练的配置
 config = config.train_config

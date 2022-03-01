@@ -37,7 +37,7 @@ if exp_name == "duie":
     file_name2data = {}
     for path, folds, files in os.walk(data_in_dir):
         for file_name in files:
-            if 'train' in file_name or 'dev' in file_name or 'test' in file_name:
+            if 'train' in file_name or 'valid' in file_name or 'test' in file_name:
                 file_path = os.path.join(path, file_name)
                 file_name = re.match("(.*?)\.json", file_name).group(1)
                 with open(file_path, "r", encoding="utf-8") as f:

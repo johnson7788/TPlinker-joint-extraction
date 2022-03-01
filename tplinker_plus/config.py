@@ -2,7 +2,7 @@ import string
 import random
 
 common = {
-    "exp_name": "duie2", # ace05_lu
+    "exp_name": "duie", # ace05_lu
     "rel2id": "rel2id.json",
     "ent2id": "ent2id.json",
     "device_num": 0,
