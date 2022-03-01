@@ -5,7 +5,7 @@ common = {
     "exp_name": "duie2", # ace05_lu
     "rel2id": "rel2id.json",
     "ent2id": "ent2id.json",
-    "device_num": 1,
+    "device_num": 0,
 #     "encoder": "BiLSTM",
     "encoder": "BERT", 
     "hyper_parameters": {
@@ -19,25 +19,25 @@ common["run_name"] = "{}+{}+{}".format("TP2", common["hyper_parameters"]["shakin
 
 run_id = ''.join(random.sample(string.ascii_letters + string.digits, 8))
 train_config = {
-    "train_data": "train_data.json",
-    "valid_data": "valid_data.json",
-    "rel2id": "rel2id.json",
-    "logger": "wandb", # if wandb, comment the following four lines
-   
-#     # if logger is set as default, uncomment the following four lines and comment the line above
-#     "logger": "default", 
-#     "run_id": run_id,
-#     "log_path": "./default_log_dir/default.log",
-#     "path_to_save_model": "./default_log_dir/{}".format(run_id),
+    "train_data": "train_data.json",  #训练集
+    "valid_data": "valid_data.json",  #验证集
+    "rel2id": "rel2id.json",  # 关系到id的映射
+    # "logger": "wandb", # if wandb, comment the following four lines
 
-    # when to save the model state dict
+#     # if logger is set as default, uncomment the following four lines
+    "logger": "default",
+    "run_id": run_id,
+    "log_path": "./default_log_dir/default.log",
+    "path_to_save_model": "./default_log_dir/{}".format(run_id),
+
+    # 保存模型，只有当f1 score大于当前值f1_2_save的时候
     "f1_2_save": 0,
-    # whether train_config from scratch
+    # 是否根据配置文件，从头开始训练， 和model_state_dict_path相斥
     "fr_scratch": True,
-    # write down notes here if you want, it will be logged
+    # 一些需要写到日志中的字符
     "note": "start from scratch",
-    # if not fr scratch, set a model_state_dict
-    "model_state_dict_path": "", # valid only if "fr_scratch" is False
+    # 如果不是scratch开始训练, 需要设定一个model_state_dict
+    "model_state_dict_path": "",
     "hyper_parameters": {
         "batch_size": 32,
         "epochs": 100,
@@ -73,8 +73,8 @@ eval_config = {
 }
 
 bert_config = {
-    "data_home": "../data4bert",
-    "bert_path": "../../pretrained_models/chinese-bert-wwm-ext-hit", # bert-base-cased， chinese-bert-wwm-ext-hit
+    "data_home": "data4bert",
+    "bert_path": "pretrained_models/chinese-bert-wwm-ext-hit", # bert-base-cased， chinese-bert-wwm-ext-hit
     "hyper_parameters": {
         "lr": 5e-5,
     },

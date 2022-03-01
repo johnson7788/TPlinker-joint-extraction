@@ -288,10 +288,21 @@ class DataMaker4Bert():
         self.shaking_tagger = shaking_tagger
     
     def get_indexed_data(self, data, max_seq_len, data_type = "train"):
+        """
+        样本标签通过handshaking_tagger进行标签转换，原文本tokenize到id的转换，生成一条样本数据
+        :param data:
+        :type data:
+        :param max_seq_len:
+        :type max_seq_len:
+        :param data_type:
+        :type data_type:
+        :return:
+        :rtype:
+        """
         indexed_samples = []
-        for ind, sample in tqdm(enumerate(data), desc = "Generate indexed train or valid data"):
-            text = sample["text"]
-            # codes for bert input
+        for ind, sample in tqdm(enumerate(data), desc = f"生成{data_type}数据的索引"):
+            text = sample["text"]  # 原始文本'Massachusetts ASTON MAGNA Great Barrington ; also at Bard College , Annandale-on-Hudson , N.Y. , July 1-Aug .'
+            # text 到id的映射，返回input_ids, token_type_ids, attention_mask, offset_mapping
             codes = self.tokenizer.encode_plus(text, 
                                     return_offsets_mapping = True, 
                                     add_special_tokens = False,
@@ -303,15 +314,16 @@ class DataMaker4Bert():
             # tagging
             matrix_spots = None
             if data_type != "test":
+                # 对于训练集和验证集，都要进行实体和关系的标签映射
                 matrix_spots = self.shaking_tagger.get_spots(sample)
 
-            # get codes
+            #获取每个id
             input_ids = torch.tensor(codes["input_ids"]).long()
             attention_mask = torch.tensor(codes["attention_mask"]).long()
             token_type_ids = torch.tensor(codes["token_type_ids"]).long()
             tok2char_span = codes["offset_mapping"]
-
-            sample_tp = (sample, 
+            # 一条样本
+            sample_tp = (sample,
                      input_ids,
                      attention_mask,
                      token_type_ids,
@@ -322,6 +334,15 @@ class DataMaker4Bert():
         return indexed_samples
 
     def generate_batch(self, batch_data, data_type = "train"):
+        """
+        会被collate_fn函数调用，对数据进行最终处理
+        :param batch_data: 一个批次的数据， 格式是 sample, input_ids, attention_mask,token_type_ids, tok2char_span, spots_tuple,
+        :type batch_data:
+        :param data_type:
+        :type data_type:
+        :return:
+        :rtype:
+        """
         sample_list = []
         input_ids_list = []
         attention_mask_list = []
@@ -335,10 +356,11 @@ class DataMaker4Bert():
             attention_mask_list.append(tp[2])        
             token_type_ids_list.append(tp[3])        
             tok2char_span_list.append(tp[4])
+            # 如果是训练集或验证集，都加入label信息
             if data_type != "test":
                 matrix_spots_list.append(tp[5])
 
-        # @specific: indexed by bert tokenizer
+        # @specific: indexed by bert tokenizer， 把一个批次的数据组成一个
         batch_input_ids = torch.stack(input_ids_list, dim = 0)
         batch_attention_mask = torch.stack(attention_mask_list, dim = 0)
         batch_token_type_ids = torch.stack(token_type_ids_list, dim = 0)

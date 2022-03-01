@@ -2,7 +2,7 @@ import string
 import random
 
 common = {
-    "exp_name": "nyt_star",
+    "exp_name": "nyt",
     "rel2id": "rel2id.json",
     "device_num": 0,
 #     "encoder": "BiLSTM",
@@ -13,7 +13,7 @@ common = {
         "dist_emb_size": -1, # -1表示不使用距离嵌入；其他数字：需要大于输入的max_seq_len。如果你只想复制论文中的结果，则设置-1。
         "ent_add_dist": False, # 如果你想为每个token对添加距离嵌入，则设置为true。(用于实体解码器)
         "rel_add_dist": False, # 与上述相同（用于关系解码器）
-        "match_pattern": "only_head_text", # only_head_text (nyt_star, webnlg_star), whole_text (nyt, webnlg), only_head_index, whole_span
+        "match_pattern": "whole_text", # only_head_text (nyt_star, webnlg_star), whole_text (nyt, webnlg), only_head_index, whole_span
     },
 }
 common["run_name"] = "{}+{}+{}".format("TP1", common["hyper_parameters"]["shaking_type"], common["encoder"]) + ""

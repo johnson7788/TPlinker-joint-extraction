@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+
 
 
 import json
@@ -62,9 +62,9 @@ rel2id_path = os.path.join(data_home, experiment_name, config["rel2id"])
 ent2id_path = os.path.join(data_home, experiment_name, config["ent2id"])
 
 
-# In[ ]:
 
 
+# 使用wandb日志还是logging日志
 if config["logger"] == "wandb":
     # init wandb
     wandb.init(project = experiment_name, 
@@ -85,7 +85,7 @@ else:
 
 # # Load Data
 
-# In[ ]:
+
 
 
 train_data = json.load(open(train_data_path, "r", encoding = "utf-8"))
@@ -93,15 +93,16 @@ valid_data = json.load(open(valid_data_path, "r", encoding = "utf-8"))
 
 
 # # Split
-
-# In[ ]:
+# 进行tokenize，BERT或BiLSTM
 
 
 # @specific
 if config["encoder"] == "BERT":
     tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens = False, do_lower_case = False)
     tokenize = tokenizer.tokenize
-    get_tok2char_span_map = lambda text: tokenizer.encode_plus(text, return_offsets_mapping = True, add_special_tokens = False)["offset_mapping"]
+    # 设置一个tokenize的匿名函数
+    get_tok2char_span_map = lambda text: \
+    tokenizer.encode_plus(text, return_offsets_mapping=True, add_special_tokens=False)["offset_mapping"]
 elif config["encoder"] in {"BiLSTM", }:
     tokenize = lambda text: text.split(" ")
     def get_tok2char_span_map(text):
@@ -113,50 +114,33 @@ elif config["encoder"] in {"BiLSTM", }:
             char_num += len(tok) + 1 # +1: whitespace
         return tok2char_span
 
+#  预处理
+preprocessor = Preprocessor(tokenize_func=tokenize, get_tok2char_span_map_func=get_tok2char_span_map)
 
-# In[ ]:
-
-
-preprocessor = Preprocessor(tokenize_func = tokenize, 
-                            get_tok2char_span_map_func = get_tok2char_span_map)
-
-
-# In[ ]:
-
-
-# train and valid max token num
+# 验证训练集和测试集的token长度
 max_tok_num = 0
-all_data = train_data + valid_data 
-    
+all_data = train_data + valid_data
+
 for sample in all_data:
     tokens = tokenize(sample["text"])
     max_tok_num = max(max_tok_num, len(tokens))
-max_tok_num
-
-
-# In[ ]:
-
+print(f"总的数据量是: {len(all_data)}， 最大的token的数量是: {max_tok_num}")
 
 if max_tok_num > hyper_parameters["max_seq_len"]:
-    train_data = preprocessor.split_into_short_samples(train_data, 
-                                                          hyper_parameters["max_seq_len"], 
-                                                          sliding_len = hyper_parameters["sliding_len"], 
-                                                          encoder = config["encoder"]
-                                                         )
-    valid_data = preprocessor.split_into_short_samples(valid_data, 
-                                                          hyper_parameters["max_seq_len"], 
-                                                          sliding_len = hyper_parameters["sliding_len"], 
-                                                          encoder = config["encoder"]
-                                                         )
+    # 如果句子的最大长度超过我们的超参数，对句子进行滑动的截断，生成多个子句
+    train_data = preprocessor.split_into_short_samples(train_data,
+                                                       hyper_parameters["max_seq_len"],
+                                                       sliding_len=hyper_parameters["sliding_len"],
+                                                       encoder=config["encoder"]
+                                                       )
+    valid_data = preprocessor.split_into_short_samples(valid_data,
+                                                       hyper_parameters["max_seq_len"],
+                                                       sliding_len=hyper_parameters["sliding_len"],
+                                                       encoder=config["encoder"]
+                                                       )
 
+print("训练数据的形状: {}".format(len(train_data)), "验证集的形状: {}".format(len(valid_data)))
 
-# In[ ]:
-
-
-print("train: {}".format(len(train_data)), "valid: {}".format(len(valid_data)))
-
-
-# In[ ]:
 
 
 # count_neg = 0 # 74.8% are neg samples 0.7485367594575303
@@ -168,17 +152,14 @@ print("train: {}".format(len(train_data)), "valid: {}".format(len(valid_data)))
 
 # # Tagger (Decoder)
 
-# In[ ]:
 
-
+# 最大序列长度
 max_seq_len = min(max_tok_num, hyper_parameters["max_seq_len"])
 rel2id = json.load(open(rel2id_path, "r", encoding = "utf-8"))
 ent2id = json.load(open(ent2id_path, "r", encoding = "utf-8"))
 handshaking_tagger = HandshakingTaggingScheme(rel2id, max_seq_len, ent2id)
 tag_size = handshaking_tagger.get_tag_size()
 
-
-# In[ ]:
 
 
 def sample_equal_to(sample1, sample2):
@@ -242,8 +223,6 @@ def sample_equal_to(sample1, sample2):
 
 # # Dataset
 
-# In[ ]:
-
 
 if config["encoder"] == "BERT":
     tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens = False, do_lower_case = False)
@@ -268,50 +247,39 @@ elif config["encoder"] in {"BiLSTM", }:
     data_maker = DataMaker4BiLSTM(text2indices, get_tok2char_span_map, handshaking_tagger)
 
 
-# In[ ]:
-
-
+# 数据集
 class MyDataset(Dataset):
     def __init__(self, data):
         self.data = data
-        
+
     def __getitem__(self, index):
         return self.data[index]
-    
+
     def __len__(self):
         return len(self.data)
 
 
-# In[ ]:
-
-
-indexed_train_data = data_maker.get_indexed_data(train_data, max_seq_len)
-indexed_valid_data = data_maker.get_indexed_data(valid_data, max_seq_len)
-
-
-# In[ ]:
+# 处理训练集和验证集数据: 样本标签通过handshaking_tagger进行标签转换，原文本tokenize到id的转换，生成一条样本数据
+indexed_train_data = data_maker.get_indexed_data(train_data, max_seq_len, data_type="train")
+indexed_valid_data = data_maker.get_indexed_data(valid_data, max_seq_len, data_type="valid")
 
 
 train_dataloader = DataLoader(MyDataset(indexed_train_data), 
                                   batch_size = hyper_parameters["batch_size"], 
                                   shuffle = True, 
-                                  num_workers = 6,
+                                  num_workers = 0,
                                   drop_last = False,
                                   collate_fn = data_maker.generate_batch,
                                  )
 valid_dataloader = DataLoader(MyDataset(indexed_valid_data), 
                           batch_size = hyper_parameters["batch_size"], 
                           shuffle = True, 
-                          num_workers = 6,
+                          num_workers = 0,
                           drop_last = False,
                           collate_fn = data_maker.generate_batch,
                          )
 
-
-# In[ ]:
-
-
-# # have a look at dataloader
+# 查看和验证下dataloader的数据
 # train_data_iter = iter(train_dataloader)
 # batch_data = next(train_data_iter)
 # text_id_list, text_list, batch_input_ids, \
@@ -338,9 +306,8 @@ valid_dataloader = DataLoader(MyDataset(indexed_valid_data),
 
 # # Model
 
-# In[ ]:
 
-
+# 模型
 if config["encoder"] == "BERT":
     encoder = BertModel.from_pretrained(config["bert_path"])
     hidden_size = encoder.config.hidden_size
@@ -399,9 +366,7 @@ rel_extractor = rel_extractor.to(device)
 #     print(sampled_tok_pair_indices.size())
 
 
-# # Metrics
-
-# In[ ]:
+# # 评估指标
 
 
 metrics = MetricsCalculator(handshaking_tagger)
@@ -410,7 +375,6 @@ loss_func = lambda y_pred, y_true: metrics.loss_func(y_pred, y_true, ghm = hyper
 
 # # Train
 
-# In[ ]:
 
 
 # train step
@@ -495,15 +459,23 @@ def valid_step(batch_valid_data):
     return sample_acc.item(), cpg_dict
 
 
-# In[ ]:
 
 
 max_f1 = 0.
 def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_epoch):  
     def train(dataloader, ep):
-        # train
+        """
+        开始训练
+        :param dataloader: 数据集
+        :type dataloader:
+        :param ep:  epoch:  eg: 0
+        :type ep: int
+        :return:
+        :rtype:
+        """
+        # 模型是训练状态
         rel_extractor.train()
-        
+        # 开始时间
         t_ep = time.time()
         total_loss, total_sample_acc = 0., 0.
         for batch_ind, batch_train_data in enumerate(dataloader):
@@ -646,16 +618,9 @@ def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_ep
         print("Current avf_f1: {}, Best f1: {}".format(valid_f1, max_f1))
 
 
-# In[ ]:
-
-
 # optimizer
 init_learning_rate = float(hyper_parameters["lr"])
 optimizer = torch.optim.Adam(rel_extractor.parameters(), lr = init_learning_rate)
-
-
-# In[ ]:
-
 
 if hyper_parameters["scheduler"] == "CAWR":
     T_mult = hyper_parameters["T_mult"]
@@ -669,9 +634,6 @@ elif hyper_parameters["scheduler"] == "Step":
 
 elif hyper_parameters["scheduler"] == "ReduceLROnPlateau":
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min", verbose = True, patience = 6)
-
-
-# In[ ]:
 
 
 if not config["fr_scratch"]:

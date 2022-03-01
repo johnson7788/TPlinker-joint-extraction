@@ -98,8 +98,6 @@ if config["encoder"] == "BERT":
     tokenizer.encode_plus(text, return_offsets_mapping=True, add_special_tokens=False)["offset_mapping"]
 elif config["encoder"] in {"BiLSTM", }:
     tokenize = lambda text: text.split(" ")
-
-
     def get_tok2char_span_map(text):
         tokens = text.split(" ")
         tok2char_span = []
@@ -174,8 +172,6 @@ elif config["encoder"] in {"BiLSTM", }:
             input_ids.extend([token2idx['<PAD>']] * (max_seq_len - len(input_ids)))
         input_ids = torch.tensor(input_ids[:max_seq_len])
         return input_ids
-
-
     data_maker = DataMaker4BiLSTM(text2indices, get_tok2char_span_map, handshaking_tagger)
 
 
@@ -240,7 +236,7 @@ if config["encoder"] == "BERT":
     encoder = AutoModel.from_pretrained(config["bert_path"])
     hidden_size = encoder.config.hidden_size
     # fake_inputs有啥用
-    fake_inputs = torch.zeros([hyper_parameters["batch_size"], max_seq_len, hidden_size]).to(device)
+    # fake_inputs = torch.zeros([hyper_parameters["batch_size"], max_seq_len, hidden_size]).to(device)
     #  初始化模型
     rel_extractor = TPLinkerBert(encoder,
                                  len(rel2id),

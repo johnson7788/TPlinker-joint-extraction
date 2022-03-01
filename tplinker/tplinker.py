@@ -291,7 +291,8 @@ class DataMaker4Bert():
 
             # tagging
             spots_tuple = None
-            if data_type != "test":  # 对于训练集和验证集，都要进行实体和关系的标签映射
+            if data_type != "test":
+                # 对于训练集和验证集，都要进行实体和关系的标签映射
                 spots_tuple = self.handshaking_tagger.get_spots(sample)
 
             #获取每个id
@@ -384,7 +385,7 @@ class DataMaker4BiLSTM():
                     )
             indexed_samples.append(sample_tp)       
         return indexed_samples
-    
+
     def generate_batch(self, batch_data, data_type = "train"):
         sample_list = []
         input_ids_list = []
