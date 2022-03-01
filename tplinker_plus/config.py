@@ -39,7 +39,7 @@ train_config = {
     # 如果不是scratch开始训练, 需要设定一个model_state_dict
     "model_state_dict_path": "",
     "hyper_parameters": {
-        "batch_size": 32,
+        "batch_size": 16,
         "epochs": 100,
         "seed": 2333,
         "log_interval": 10,
@@ -65,7 +65,7 @@ eval_config = {
     "score": True,
     
     "hyper_parameters": {
-        "batch_size": 32,
+        "batch_size": 16,
         "force_split": False,
         "max_seq_len": 512,
         "sliding_len": 50,

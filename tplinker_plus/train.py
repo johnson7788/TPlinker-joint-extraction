@@ -180,7 +180,7 @@ def sample_equal_to(sample1, sample2):
     return True
 
 
-# In[ ]:
+
 
 
 # # check tagging and decoding
@@ -345,8 +345,12 @@ elif config["encoder"] in {"BiLSTM", }:
 
 rel_extractor = rel_extractor.to(device)
 
+# 统计参数
+all_paras = sum(x.numel() for x in rel_extractor.parameters())
+enc_paras = sum(x.numel() for x in encoder.parameters())
 
-# In[ ]:
+print(f"模型的总的参数量{all_paras}, 编码器的参数量: {enc_paras}")
+print(f"总的参数量减去编码器的参数量: {all_paras - enc_paras}")
 
 
 # # test outputs
