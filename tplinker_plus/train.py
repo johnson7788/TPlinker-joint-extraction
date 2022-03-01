@@ -46,7 +46,7 @@ torch.backends.cudnn.deterministic = True
 
 # eg: data4bert,
 data_home = config["data_home"]
-# eg: duie2
+# eg: duie
 experiment_name = config["exp_name"]
 # eg: data4bert/nyt_star/train_data.json
 train_data_path = os.path.join(data_home, experiment_name, config["train_data"])
@@ -470,12 +470,13 @@ def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_ep
         """
         # 模型是训练状态
         rel_extractor.train()
-        # 开始时间
+        # 这个epoch的开始时间
         t_ep = time.time()
         total_loss, total_sample_acc = 0., 0.
         for batch_ind, batch_train_data in enumerate(dataloader):
+            # 记录一个batch的时间
             t_batch = time.time()
-
+            # 训练的step
             loss, sample_acc = train_step(batch_train_data, optimizer)
 
             total_loss += loss

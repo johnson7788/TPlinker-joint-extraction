@@ -33,8 +33,8 @@ class Preprocessor:
     
     def transform_data(self, data, ori_format, dataset_type, add_id = True):
         '''
-        This function can only deal with three original format used in the previous works. 
-        If you want to feed new dataset to the model, just define your own function to transform data.
+        这个函数只能处理以前工作中使用的三种原始格式。
+        如果你想向模型输入新的数据集，只要定义你自己的函数来转换数据。
         data: original data
         ori_format: "casrel", "joint_re", "raw_nyt"
         dataset_type: "train", "valid", "test"; only for generate id for the data
@@ -98,8 +98,8 @@ class Preprocessor:
                     entity_list.append({"text": sub_text, "type": sub_type})
                 normal_sample["entity_list"] = entity_list
             normal_sample_list.append(normal_sample)
-            
-        return self._clean_sp_char(normal_sample_list)
+        dataset = self._clean_sp_char(normal_sample_list)
+        return dataset
     
     def split_into_short_samples(self, sample_list, max_seq_len, sliding_len = 50, encoder = "BERT", data_type = "train"):
         """
@@ -211,13 +211,21 @@ class Preprocessor:
         return new_sample_list
     
     def _clean_sp_char(self, dataset):
+        """
+        sp == special, 特殊字符
+        清理text，subject和object中的特殊字符
+        :param dataset:
+        :type dataset:
+        :return:
+        :rtype:
+        """
         def clean_text(text):
             text = re.sub("�", "", text)
 #             text = re.sub("([A-Za-z]+)", r" \1 ", text)
 #             text = re.sub("(\d+)", r" \1 ", text)
 #             text = re.sub("\s+", " ", text).strip()
             return text 
-        for sample in tqdm(dataset, desc = "Clean"):
+        for sample in tqdm(dataset, desc = "清理特殊字符"):
             sample["text"] = clean_text(sample["text"])
             for rel in sample["relation_list"]:
                 rel["subject"] = clean_text(rel["subject"])
@@ -226,7 +234,7 @@ class Preprocessor:
         
     def clean_data_wo_span(self, ori_data, separate = False, remove_white_space=False, data_type = "train"):
         '''
-        删除多余空格
+        删除多余空格或其它
         and add whitespaces around tokens to keep special characters from them
         '''
         def clean_text(text):
@@ -238,7 +246,7 @@ class Preprocessor:
                 text = re.sub('[ ]+', '', text)
             return text
 
-        for sample in tqdm(ori_data, desc = "clean data"):
+        for sample in tqdm(ori_data, desc = "第二次清理数据"):
             sample["text"] = clean_text(sample["text"])
             if data_type == "test":
                 continue
@@ -249,8 +257,9 @@ class Preprocessor:
 
     def clean_data_w_span(self, ori_data):
         '''
+        剥离空格处并改变跨度
+        为不良样本（char span错误）添加一个stake，并从干净的数据中删除它们。
         stripe whitespaces and change spans
-        add a stake to bad samples(char span error) and remove them from the clean data
         '''
         bad_samples, clean_data = [], []
         def strip_white(entity, entity_char_span):
@@ -292,6 +301,7 @@ class Preprocessor:
     
     def _get_char2tok_span(self, text):
         '''
+        字符在原文的位置，经过tokenize后变成token在的原文的位置
         把char的span转换到token的span
         '''
         # eg: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 12), (12, 13), (13, 14), (14, 15), (15, 16), (16, 17), (17, 18), (18, 19), (19, 20), (20, 21), (21, 22)]
@@ -315,6 +325,7 @@ class Preprocessor:
 
     def _get_ent2char_spans(self, text, entities, ignore_subword_match = True):
         '''
+        查找字符在原文中的位置
         如果ignore_subword_match为true，则查找周围有空格的实体。e.g. "entity" -> " entity "
         '''
         entities = sorted(entities, key = lambda x: len(x), reverse = True)
@@ -337,7 +348,7 @@ class Preprocessor:
     
     def add_char_span(self, dataset, ignore_subword_match = True):
         """
-
+        查找实体的在原文中的位置， 添加到数据集
         :param dataset:
         :type dataset:
         :param ignore_subword_match:

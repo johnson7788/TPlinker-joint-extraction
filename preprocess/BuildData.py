@@ -222,10 +222,9 @@ json.dump(ent2id, open(ent2id_path, "w", encoding = "utf-8"), ensure_ascii = Fal
 logging.info("ent2id is output to {}".format(ent2id_path))
 
 
-
 data_statistics_path = os.path.join(data_out_dir, "data_statistics.txt")
 json.dump(data_statistics, open(data_statistics_path, "w", encoding = "utf-8"), ensure_ascii = False, indent = 4)
-logging.info("data_statistics is output to {}".format(data_statistics_path)) 
+logging.info("数据的统计状态保存到  {}".format(data_statistics_path))
 
 print(f"数据集的统计信息结果如下：")
 pprint(data_statistics)
