@@ -14,7 +14,6 @@ import yaml
 import logging
 from pprint import pprint
 
-
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
@@ -23,9 +22,7 @@ try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
-config = yaml.load(open("build_data_config.yaml", "r"), Loader = yaml.FullLoader)
-
-
+config = yaml.load(open("preprocess/build_data_config.yaml", "r"), Loader = yaml.FullLoader)
 
 exp_name = config["exp_name"]
 data_in_dir = os.path.join(config["data_in_dir"], exp_name)
@@ -43,9 +40,9 @@ for path, folds, files in os.walk(data_in_dir):
         file_path = os.path.join(path, file_name)
         file_name = re.match("(.*?)\.json", file_name).group(1)
         file_name2data[file_name] = json.load(open(file_path, "r", encoding = "utf-8"))
+assert file_name2data, f"没有获取到文件，请检数据的目录是否正确"
 
-
-# # Preprocess
+#处理数据
 
 
 # @specific
