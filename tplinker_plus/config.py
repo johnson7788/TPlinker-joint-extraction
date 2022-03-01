@@ -46,8 +46,8 @@ train_config = {
         "max_seq_len": 128,
         "sliding_len": 20,
         "scheduler": "CAWR", # Step
-        "ghm": False, # set True if you want to use GHM to adjust the weights of gradients, this will speed up the training process and might improve the results. (Note that ghm in current version is unstable now, may hurt the results)
-        "tok_pair_sample_rate": 1, # (0, 1] How many percent of token paris you want to sample for training, this would slow down the training if set to less than 1. It is only helpful when your GPU memory is not enought for the training.
+        "ghm": False, # 如果你想使用GHM来调整梯度的权重，请设置为True，这将加速训练过程，并可能改善结果。(注意，当前版本的GHM是不稳定的，可能会损害结果）。
+        "tok_pair_sample_rate": 1, # (0, 1] 你想对多少百分比的token paris进行抽样训练，如果设置为小于1，这将降低训练速度。
     },
 }
 

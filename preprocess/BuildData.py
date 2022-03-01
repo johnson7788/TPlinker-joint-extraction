@@ -46,8 +46,8 @@ if exp_name == "duie":
                         line_dict = json.loads(line)
                         data.append(line_dict)
                 # 迷你数据集
-                file_name2data[file_name] = data[:200]
-                # file_name2data[file_name] = data
+                # file_name2data[file_name] = data[:200]
+                file_name2data[file_name] = data
     assert file_name2data, f"没有获取到文件，请检数据的目录是否正确"
 else:
     file_name2data = {}

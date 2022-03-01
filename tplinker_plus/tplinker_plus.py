@@ -13,6 +13,15 @@ from collections import Counter
 
 class HandshakingTaggingScheme(object):
     def __init__(self, rel2id, max_seq_len, entity_type2id):
+        """
+        初始化标注策略
+        :param rel2id:  {'丈夫': 0, '上映时间': 1, '主持人': 2, '主演': 3, '主角': 4, '主题曲': 5, '人口数量': 6, '作曲': 7, '作者': 8, '作词': 9, '出品公司': 10, '创始人': 11, '制片人': 12, '占地面积': 13, '号': 14, '嘉宾': 15, '国籍': 16, '妻子': 17, '官方语言': 18, '导演': 19, '总部地点': 20, '成立日期': 21, '所在城市': 22, '所属专辑': 23, '改编自': 24, '朝代': 25, '校长': 26, '歌手': 27, '母亲': 28, '毕业院校': 29, '气候': 30, '注册资本': 31, '父亲': 32, '祖籍': 33, '票房': 34, '简称': 35, '编剧': 36, '获奖': 37, '董事长': 38, '配音': 39, '面积': 40, '饰演': 41, '首都': 42}
+        :type rel2id:
+        :param max_seq_len:  128
+        :type max_seq_len:
+        :param entity_type2id: {'Date': 0, 'Number': 1, 'Text': 2, '人物': 3, '企业': 4, '作品': 5, '历史人物': 6, '国家': 7, '图书作品': 8, '地点': 9, '城市': 10, '奖项': 11, '娱乐人物': 12, '学校': 13, '影视作品': 14, '文学作品': 15, '景点': 16, '机构': 17, '歌曲': 18, '气候': 19, '电视综艺': 20, '行政区': 21, '语言': 22, '音乐专辑': 23}
+        :type entity_type2id:
+        """
         super().__init__()
         self.rel2id = rel2id
         self.id2rel = {ind:rel for rel, ind in rel2id.items()}
@@ -23,23 +32,24 @@ class HandshakingTaggingScheme(object):
                      "ST2OT", # subject tail to object tail
                      "OT2ST", # object tail to subject tail
                      }
+        # 标签类型变成 4种类型的数量 * 关系类型的数量
         self.tags = {self.separator.join([rel, lt]) for rel in self.rel2id.keys() for lt in self.link_types}
-        
         self.ent2id = entity_type2id
         self.id2ent = {ind:ent for ent, ind in self.ent2id.items()}
+        # 合并实体的标签到总的标签中
         self.tags |= {self.separator.join([ent, "EH2ET"]) for ent in self.ent2id.keys()} # EH2ET: entity head to entity tail
-
-        self.tags = sorted(self.tags)
-        
+        self.tags = sorted(self.tags)  # 排序
+        # 标签到id 和id到标签
         self.tag2id = {t:idx for idx, t in enumerate(self.tags)}
         self.id2tag = {idx:t for t, idx in self.tag2id.items()}
         self.matrix_size = max_seq_len
         
         # map
-        # e.g. [(0, 0), (0, 1), (0, 2), (1, 1), (1, 2), (2, 2)]
+        ## 初始化一个shaking序列到矩阵的映射e.g. [(0, 0), (0, 1), (0, 2), (1, 1), (1, 2), (2, 2)]， 长度是:8256
         self.shaking_idx2matrix_idx = [(ind, end_ind) for ind in range(self.matrix_size) for end_ind in list(range(self.matrix_size))[ind:]]
-
+        # 初始化一个矩阵到shaking序列的映射, 形状128 * 128
         self.matrix_idx2shaking_idx = [[0 for i in range(self.matrix_size)] for j in range(self.matrix_size)]
+        # 更新下矩阵到序列的映射
         for shaking_ind, matrix_ind in enumerate(self.shaking_idx2matrix_idx):
             self.matrix_idx2shaking_idx[matrix_ind[0]][matrix_ind[1]] = shaking_ind
     
@@ -449,27 +459,27 @@ class TPLinkerPlusBert(nn.Module):
         last_hidden_state = context_outputs[0]
         
         seq_len = last_hidden_state.size()[1]
-        # shaking_hiddens: (batch_size, shaking_seq_len, hidden_size)
+        # shaking_hiddens: (batch_size, shaking_seq_len, hidden_size)， eg: torch.Size([16, 8256, 768])
         shaking_hiddens = self.handshaking_kernel(last_hidden_state)
         
         sampled_tok_pair_indices = None
         if self.training:
-            # randomly sample segments of token pairs
+            # 随机抽出token对的片段, shaking_seq_len: 8265
             shaking_seq_len = shaking_hiddens.size()[1]
-            segment_len = int(shaking_seq_len * self.tok_pair_sample_rate)
-            seg_num = math.ceil(shaking_seq_len // segment_len)
-            start_ind = torch.randint(seg_num, []) * segment_len
-            end_ind = min(start_ind + segment_len, shaking_seq_len)
-            # sampled_tok_pair_indices: (batch_size, ~segment_len) ~end_ind - start_ind <= segment_len
+            segment_len = int(shaking_seq_len * self.tok_pair_sample_rate)  #eg: 8265
+            seg_num = math.ceil(shaking_seq_len // segment_len)  # eg: 1
+            start_ind = torch.randint(seg_num, []) * segment_len   # eg: tensor(0)
+            end_ind = min(start_ind + segment_len, shaking_seq_len)   #eg: tensor(8256)
+            # sampled_tok_pair_indices: (batch_size, ~segment_len) ~end_ind - start_ind <= segment_len, eg: torch.Size([16, 8256])
             sampled_tok_pair_indices = torch.arange(start_ind, end_ind)[None, :].repeat(shaking_hiddens.size()[0], 1)
 #             sampled_tok_pair_indices = torch.randint(shaking_seq_len, (shaking_hiddens.size()[0], segment_len))
             sampled_tok_pair_indices = sampled_tok_pair_indices.to(shaking_hiddens.device)
 
             # sampled_tok_pair_indices will tell model what token pairs should be fed into fcs
-            # shaking_hiddens: (batch_size, ~segment_len, hidden_size)
+            # shaking_hiddens: (batch_size, ~segment_len, hidden_size), eg: shaking_hiddens: torch.Size([16, 8256, 768])
             shaking_hiddens = shaking_hiddens.gather(1, sampled_tok_pair_indices[:,:,None].repeat(1, 1, shaking_hiddens.size()[-1]))
  
-        # outputs: (batch_size, segment_len, tag_size) or (batch_size, shaking_seq_len, tag_size)
+        # outputs: (batch_size, segment_len, tag_size) or (batch_size, shaking_seq_len, tag_size) eg: torch.Size([16, 8256, 196]), 196是标签的数量
         outputs = self.fc(shaking_hiddens)
 
         return outputs, sampled_tok_pair_indices
