@@ -6,7 +6,7 @@ import json
 import os
 from tqdm import tqdm
 import re
-from transformers import BertTokenizerFast
+from transformers import BertTokenizerFast, AutoTokenizer
 import copy
 import torch
 from common.utils import Preprocessor
@@ -33,21 +33,40 @@ if not os.path.exists(data_out_dir):
 
 #加载数据集
 
-
-file_name2data = {}
-for path, folds, files in os.walk(data_in_dir):
-    for file_name in files:
-        file_path = os.path.join(path, file_name)
-        file_name = re.match("(.*?)\.json", file_name).group(1)
-        file_name2data[file_name] = json.load(open(file_path, "r", encoding = "utf-8"))
-assert file_name2data, f"没有获取到文件，请检数据的目录是否正确"
+if exp_name == "duie":
+    file_name2data = {}
+    for path, folds, files in os.walk(data_in_dir):
+        for file_name in files:
+            if 'train' in file_name or 'dev' in file_name or 'test' in file_name:
+                file_path = os.path.join(path, file_name)
+                file_name = re.match("(.*?)\.json", file_name).group(1)
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = []
+                    for line in f:
+                        line_dict = json.loads(line)
+                        data.append(line_dict)
+                # 迷你数据集
+                file_name2data[file_name] = data[:200]
+                # file_name2data[file_name] = data
+    assert file_name2data, f"没有获取到文件，请检数据的目录是否正确"
+else:
+    file_name2data = {}
+    for path, folds, files in os.walk(data_in_dir):
+        for file_name in files:
+            file_path = os.path.join(path, file_name)
+            file_name = re.match("(.*?)\.json", file_name).group(1)
+            file_name2data[file_name] = json.load(open(file_path, "r", encoding = "utf-8"))
+    assert file_name2data, f"没有获取到文件，请检数据的目录是否正确"
 
 #处理数据
 
 
 # @specific
 if config["encoder"] == "BERT":
-    tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens = False, do_lower_case = False)
+    if os.path.exists(config["bert_path"]):
+        tokenizer = AutoTokenizer.from_pretrained(config["bert_path"], add_special_tokens = False, do_lower_case = False)
+    else:
+        tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens = False, do_lower_case = False)
     tokenize = tokenizer.tokenize
     get_tok2char_span_map = lambda text: tokenizer.encode_plus(text, return_offsets_mapping = True, add_special_tokens = False)["offset_mapping"]
 elif config["encoder"] == "BiLSTM":
@@ -119,6 +138,7 @@ rel_set = set()
 ent_set = set()
 error_statistics = {}
 for file_name, data in file_name2data.items():
+    print(f"开始处理数据集: {file_name}")
     assert len(data) > 0
     if "relation_list" in data[0]: # train or valid data
         # rm redundant whitespaces
@@ -137,7 +157,7 @@ for file_name, data in file_name2data.items():
 #         error_statistics[file_name]["char_span_error"] = len(bad_samples_w_char_span_error)
                             
         # collect relation types and entity types
-        for sample in tqdm(data, desc = "building relation type set and entity type set"):
+        for sample in tqdm(data, desc = "构建关系类型和实体类型的集合"):
             if "entity_list" not in sample: # if "entity_list" not in sample, generate entity list with default type
                 ent_list = []
                 for rel in sample["relation_list"]:
@@ -170,6 +190,7 @@ for file_name, data in file_name2data.items():
             error_statistics[file_name]["tok_span_error"] = len(span_error_memory)
             
         file_name2data[file_name] = data
+print(f"处理过程中的错误信息统计结果如下：")
 pprint(error_statistics)
 
 
@@ -206,6 +227,7 @@ data_statistics_path = os.path.join(data_out_dir, "data_statistics.txt")
 json.dump(data_statistics, open(data_statistics_path, "w", encoding = "utf-8"), ensure_ascii = False, indent = 4)
 logging.info("data_statistics is output to {}".format(data_statistics_path)) 
 
+print(f"数据集的统计信息结果如下：")
 pprint(data_statistics)
 
 

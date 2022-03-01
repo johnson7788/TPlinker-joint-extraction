@@ -48,6 +48,10 @@ class Preprocessor:
                 text = " ".join(sample["tokens"])
                 rel_list = sample["spo_list"]
                 subj_key, pred_key, obj_key = 0, 1, 2
+            elif ori_format == "duie_format":
+                text = sample["text"]
+                rel_list = sample.get("spo_list", [])
+                subj_key, pred_key, obj_key = "subject", "predicate", "object"
             elif ori_format == "raw_nyt":
                 text = sample["sentText"]
                 rel_list = sample["relationMentions"]
@@ -60,13 +64,31 @@ class Preprocessor:
                 normal_sample["id"] = "{}_{}".format(dataset_type, ind)
             normal_rel_list = []
             for rel in rel_list:
+                if isinstance(rel[obj_key], dict):
+                    # duie数据集
+                    object = rel[obj_key]['@value']
+                else:
+                    object = rel[obj_key]
                 normal_rel = {
                     "subject": rel[subj_key],
                     "predicate": rel[pred_key],
-                    "object": rel[obj_key],
+                    "object": object,
                 }
                 normal_rel_list.append(normal_rel)
             normal_sample["relation_list"] = normal_rel_list
+            # 如果'object_type'和'subject_type'存在，那么实体的类别也加进去
+            if rel_list and 'object_type' in rel_list[0]:
+                # 只有duie的数据集
+                entity_list = []
+                #实体的类别信息
+                for rel in rel_list:
+                    obj_text = rel['object']['@value']
+                    obj_type = rel['object_type']['@value']
+                    sub_text = rel['subject']
+                    sub_type = rel['subject_type']
+                    entity_list.append({"text": obj_text, "type": obj_type})
+                    entity_list.append({"text": sub_text, "type": sub_type})
+                normal_sample["entity_list"] = entity_list
             normal_sample_list.append(normal_sample)
             
         return self._clean_sp_char(normal_sample_list)
@@ -280,7 +302,7 @@ class Preprocessor:
 
     def _get_ent2char_spans(self, text, entities, ignore_subword_match = True):
         '''
-        if ignore_subword_match is true, find entities with whitespace around, e.g. "entity" -> " entity "
+        如果ignore_subword_match为true，则查找周围有空格的实体。e.g. "entity" -> " entity "
         '''
         entities = sorted(entities, key = lambda x: len(x), reverse = True)
         text_cp = " {} ".format(text) if ignore_subword_match else text
@@ -300,8 +322,18 @@ class Preprocessor:
         return ent2char_spans
     
     def add_char_span(self, dataset, ignore_subword_match = True):
+        """
+
+        :param dataset:
+        :type dataset:
+        :param ignore_subword_match:
+        :type ignore_subword_match:
+        :return:
+        :rtype:
+        """
         miss_sample_list = []
         for sample in tqdm(dataset, desc = "adding char level spans"):
+            # 获取所有的实体保存到entities，包括头实体或尾实体
             entities = [rel["subject"] for rel in sample["relation_list"]]
             entities.extend([rel["object"] for rel in sample["relation_list"]])
             if "entity_list" in sample:
