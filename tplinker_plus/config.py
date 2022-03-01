@@ -2,7 +2,7 @@ import string
 import random
 
 common = {
-    "exp_name": "duie", # ace05_lu
+    "exp_name": "duie", # ace05_lu,  duie的实体数量26，关系数量48
     "rel2id": "rel2id.json",
     "ent2id": "ent2id.json",
     "device_num": 0,

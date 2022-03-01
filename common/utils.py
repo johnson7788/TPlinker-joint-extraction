@@ -69,8 +69,12 @@ class Preprocessor:
                     object = rel[obj_key]['@value']
                 else:
                     object = rel[obj_key]
+                subject = rel[subj_key]
+                if not object or not subject:
+                    # 跳过空数据
+                    continue
                 normal_rel = {
-                    "subject": rel[subj_key],
+                    "subject": subject,
                     "predicate": rel[pred_key],
                     "object": object,
                 }
@@ -86,6 +90,9 @@ class Preprocessor:
                     obj_type = rel['object_type']['@value']
                     sub_text = rel['subject']
                     sub_type = rel['subject_type']
+                    if not obj_text or not sub_text:
+                        # 跳过空数据
+                        continue
                     entity_list.append({"text": obj_text, "type": obj_type})
                     entity_list.append({"text": sub_text, "type": sub_type})
                 normal_sample["entity_list"] = entity_list
@@ -216,9 +223,9 @@ class Preprocessor:
                 rel["object"] = clean_text(rel["object"])
         return dataset
         
-    def clean_data_wo_span(self, ori_data, separate = False, data_type = "train"):
+    def clean_data_wo_span(self, ori_data, separate = False, remove_white_space=False, data_type = "train"):
         '''
-        rm duplicate whitespaces
+        删除多余空格
         and add whitespaces around tokens to keep special characters from them
         '''
         def clean_text(text):
@@ -226,6 +233,8 @@ class Preprocessor:
             if separate:
                 text = re.sub("([^A-Za-z0-9])", r" \1 ", text)
                 text = re.sub("\s+", " ", text).strip()
+            if remove_white_space:
+                text = re.sub('[ ]+', '', text)
             return text
 
         for sample in tqdm(ori_data, desc = "clean data"):
@@ -282,10 +291,11 @@ class Preprocessor:
     
     def _get_char2tok_span(self, text):
         '''
-        map character index to token level span
+        把char的span转换到token的span
         '''
+        # eg: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 12), (12, 13), (13, 14), (14, 15), (15, 16), (16, 17), (17, 18), (18, 19), (19, 20), (20, 21), (21, 22)]
         tok2char_span = self._get_tok2char_span_map(text)
-        char_num = None
+        char_num = None  # 总的字符数量
         for tok_ind in range(len(tok2char_span) - 1, -1, -1):
             if tok2char_span[tok_ind][1] != 0:
                 char_num = tok2char_span[tok_ind][1]
@@ -298,6 +308,8 @@ class Preprocessor:
                 if tok_sp[0] == -1:
                     tok_sp[0] = tok_ind
                 tok_sp[1] = tok_ind + 1
+        # if [-1, -1] in char2tok_span:
+        #     print(f"注意：发现-1，-1在字符到token的位置映射中，请检查: {text}, 空格和特殊字符都可能造成【-1，-1】的索引， 因为tokenizer对空格和特殊字符和中文的某些标点符号，返回的是不计数的")
         return char2tok_span
 
     def _get_ent2char_spans(self, text, entities, ignore_subword_match = True):
@@ -316,6 +328,7 @@ class Preprocessor:
                         continue
                 span = [m.span()[0], m.span()[1] - 2] if ignore_subword_match else m.span()
                 spans.append(span)
+                # 如果没有找到，那么span为[-1,-1]
 #             if len(spans) == 0:
 #                 set_trace()
             ent2char_spans[ent] = spans
@@ -332,7 +345,7 @@ class Preprocessor:
         :rtype:
         """
         miss_sample_list = []
-        for sample in tqdm(dataset, desc = "adding char level spans"):
+        for sample in tqdm(dataset, desc = "给数据集添加字符的spans"):
             # 获取所有的实体保存到entities，包括头实体或尾实体
             entities = [rel["subject"] for rel in sample["relation_list"]]
             entities.extend([rel["object"] for rel in sample["relation_list"]])
@@ -372,14 +385,14 @@ class Preprocessor:
            
     def add_tok_span(self, dataset):
         '''
-        dataset must has char level span
+        添加token的span, 需要把字符对应的span位置转换成token对应的span的位置
         '''      
         def char_span2tok_span(char_span, char2tok_span):
             tok_span_list = char2tok_span[char_span[0]:char_span[1]]
             tok_span = [tok_span_list[0][0], tok_span_list[-1][1]]
             return tok_span
         
-        for sample in tqdm(dataset, desc = "adding token level spans"):
+        for sample in tqdm(dataset, desc = "添加token的spans"):
             text = sample["text"]
             char2tok_span = self._get_char2tok_span(sample["text"])
             for rel in sample["relation_list"]:

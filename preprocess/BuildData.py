@@ -113,7 +113,7 @@ def check_tok_span(data):
         return decoded_ent
 
     span_error_memory = set()
-    for sample in tqdm(data, desc = "check tok spans"):
+    for sample in tqdm(data, desc = "检查token的spans是否合法"):
         text = sample["text"]
         tok2char_span = get_tok2char_span_map(text)
         for ent in sample["entity_list"]:
@@ -138,12 +138,12 @@ rel_set = set()
 ent_set = set()
 error_statistics = {}
 for file_name, data in file_name2data.items():
-    print(f"开始处理数据集: {file_name}")
+    print(f"\n开始处理数据集: {file_name}")
     assert len(data) > 0
     if "relation_list" in data[0]: # train or valid data
         # rm redundant whitespaces
-        # separate by whitespaces
-        data = preprocessor.clean_data_wo_span(data, separate = config["separate_char_by_white"])
+        # separate by whitespaces, 清理数据
+        data = preprocessor.clean_data_wo_span(data, separate = config["separate_char_by_white"], remove_white_space=config["remove_white_space"])
         error_statistics[file_name] = {}
 #         if file_name != "train_data":
 #             set_trace()

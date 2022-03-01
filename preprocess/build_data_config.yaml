@@ -16,7 +16,9 @@ data_out_dir: data4bert
 # add_char_span: 如果它已经存在，则将add_char_span设置为false。
 # ignore_subword: 当添加字符级别的跨度时，匹配周围有空白的单词。"word"，为了避免子词匹配，对中文设置为false。查找周围有空格的实体
 # check_tok_span: 检查token跨度是否有错误，如果有，打印未匹配信息。
+# 中文的数据，需要移除空格
 add_char_span: true
 ignore_subword: false
 separate_char_by_white: false
+remove_white_space: true
 check_tok_span: true
