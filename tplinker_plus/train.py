@@ -51,7 +51,7 @@ torch.backends.cudnn.deterministic = True
 
 # eg: data4bert,
 data_home = config["data_home"]
-# eg: nyt_star
+# eg: duie2
 experiment_name = config["exp_name"]
 # eg: data4bert/nyt_star/train_data.json
 train_data_path = os.path.join(data_home, experiment_name, config["train_data"])
