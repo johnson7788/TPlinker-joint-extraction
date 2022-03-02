@@ -20,9 +20,7 @@ import logging
 from common.utils import Preprocessor, DefaultLogger
 from tplinker_plus import (HandshakingTaggingScheme,
                            DataMaker4Bert,
-                           DataMaker4BiLSTM,
                            TPLinkerPlusBert,
-                           TPLinkerPlusBiLSTM,
                            MetricsCalculator)
 import wandb
 # from glove import Glove
@@ -81,25 +79,12 @@ train_data = json.load(open(train_data_path, "r", encoding="utf-8"))
 valid_data = json.load(open(valid_data_path, "r", encoding="utf-8"))
 
 # # Split
-# 进行tokenize，BERT或BiLSTM
-if config["encoder"] == "BERT":
-    tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens=False, do_lower_case=False)
-    tokenize = tokenizer.tokenize
-    # 设置一个tokenize的匿名函数
-    get_tok2char_span_map = lambda text: \
-        tokenizer.encode_plus(text, return_offsets_mapping=True, add_special_tokens=False)["offset_mapping"]
-elif config["encoder"] in {"BiLSTM", }:
-    tokenize = lambda text: text.split(" ")
-
-
-    def get_tok2char_span_map(text):
-        tokens = text.split(" ")
-        tok2char_span = []
-        char_num = 0
-        for tok in tokens:
-            tok2char_span.append((char_num, char_num + len(tok)))
-            char_num += len(tok) + 1  # +1: whitespace
-        return tok2char_span
+# 进行tokenize，BERT
+tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens=False, do_lower_case=False)
+tokenize = tokenizer.tokenize
+# 设置一个tokenize的匿名函数
+get_tok2char_span_map = lambda text: \
+    tokenizer.encode_plus(text, return_offsets_mapping=True, add_special_tokens=False)["offset_mapping"]
 
 #  预处理
 preprocessor = Preprocessor(tokenize_func=tokenize, get_tok2char_span_map_func=get_tok2char_span_map)
@@ -206,29 +191,8 @@ def sample_equal_to(sample1, sample2):
 # # Dataset
 
 # tokenizer
-if config["encoder"] == "BERT":
-    tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens=False, do_lower_case=False)
-    data_maker = DataMaker4Bert(tokenizer, handshaking_tagger)
-elif config["encoder"] in {"BiLSTM", }:
-    token2idx_path = os.path.join(data_home, experiment_name, config["token2idx"])
-    token2idx = json.load(open(token2idx_path, "r", encoding="utf-8"))
-    idx2token = {idx: tok for tok, idx in token2idx.items()}
-
-    def text2indices(text, max_seq_len):
-        input_ids = []
-        tokens = text.split(" ")
-        for tok in tokens:
-            if tok not in token2idx:
-                input_ids.append(token2idx['<UNK>'])
-            else:
-                input_ids.append(token2idx[tok])
-        if len(input_ids) < max_seq_len:
-            input_ids.extend([token2idx['<PAD>']] * (max_seq_len - len(input_ids)))
-        input_ids = torch.tensor(input_ids[:max_seq_len])
-        return input_ids
-
-
-    data_maker = DataMaker4BiLSTM(text2indices, get_tok2char_span_map, handshaking_tagger)
+tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens=False, do_lower_case=False)
+data_maker = DataMaker4Bert(tokenizer, handshaking_tagger)
 
 
 # 数据集
@@ -291,45 +255,15 @@ valid_dataloader = DataLoader(MyDataset(indexed_valid_data),
 
 
 # 模型
-if config["encoder"] == "BERT":
-    encoder = BertModel.from_pretrained(config["bert_path"])
-    hidden_size = encoder.config.hidden_size
+encoder = BertModel.from_pretrained(config["bert_path"])
+hidden_size = encoder.config.hidden_size
 
-    rel_extractor = TPLinkerPlusBert(encoder,
-                                     tag_size,
-                                     hyper_parameters["shaking_type"],
-                                     hyper_parameters["inner_enc_type"],
-                                     hyper_parameters["tok_pair_sample_rate"]
-                                     )
-
-elif config["encoder"] in {"BiLSTM", }:
-    glove = Glove()
-    glove = glove.load(config["pretrained_word_embedding_path"])
-
-    # prepare embedding matrix
-    word_embedding_init_matrix = np.random.normal(-1, 1, size=(len(token2idx), hyper_parameters["word_embedding_dim"]))
-    count_in = 0
-
-    # 在预训练词向量中的用该预训练向量
-    # 不在预训练集里的用随机向量
-    for ind, tok in tqdm(idx2token.items(), desc="Embedding matrix initializing..."):
-        if tok in glove.dictionary:
-            count_in += 1
-            word_embedding_init_matrix[ind] = glove.word_vectors[glove.dictionary[tok]]
-
-    print("{:.4f} tokens are in the pretrain word embedding matrix".format(count_in / len(idx2token)))  # 命中预训练词向量的比例
-    word_embedding_init_matrix = torch.FloatTensor(word_embedding_init_matrix)
-
-    rel_extractor = TPLinkerPlusBiLSTM(word_embedding_init_matrix,
-                                       hyper_parameters["emb_dropout"],
-                                       hyper_parameters["enc_hidden_size"],
-                                       hyper_parameters["dec_hidden_size"],
-                                       hyper_parameters["rnn_dropout"],
-                                       tag_size,
-                                       hyper_parameters["shaking_type"],
-                                       hyper_parameters["inner_enc_type"],
-                                       hyper_parameters["tok_pair_sample_rate"],
-                                       )
+rel_extractor = TPLinkerPlusBert(encoder,
+                                 tag_size,
+                                 hyper_parameters["shaking_type"],
+                                 hyper_parameters["inner_enc_type"],
+                                 hyper_parameters["tok_pair_sample_rate"]
+                                 )
 
 rel_extractor = rel_extractor.to(device)
 
@@ -364,34 +298,23 @@ loss_func = lambda y_pred, y_true: metrics.loss_func(y_pred, y_true, ghm=hyper_p
 
 # train step
 def train_step(batch_train_data, optimizer):
-    if config["encoder"] == "BERT":
-        # 获取一条数据
-        sample_list, batch_input_ids, batch_attention_mask, batch_token_type_ids, tok2char_span_list, batch_shaking_tag = batch_train_data
-        # 放到显卡上
-        batch_input_ids, batch_attention_mask, batch_token_type_ids, batch_shaking_tag = (batch_input_ids.to(device),
-                                                                                          batch_attention_mask.to(
-                                                                                              device),
-                                                                                          batch_token_type_ids.to(
-                                                                                              device),
-                                                                                          batch_shaking_tag.to(device)
-                                                                                          )
-
-    elif config["encoder"] in {"BiLSTM", }:
-        sample_list, batch_input_ids, tok2char_span_list, batch_shaking_tag = batch_train_data
-
-        batch_input_ids, batch_shaking_tag = (batch_input_ids.to(device),
-                                              batch_shaking_tag.to(device)
-                                              )
+    # 获取一条数据
+    sample_list, batch_input_ids, batch_attention_mask, batch_token_type_ids, tok2char_span_list, batch_shaking_tag = batch_train_data
+    # 放到显卡上
+    batch_input_ids, batch_attention_mask, batch_token_type_ids, batch_shaking_tag = (batch_input_ids.to(device),
+                                                                                      batch_attention_mask.to(
+                                                                                          device),
+                                                                                      batch_token_type_ids.to(
+                                                                                          device),
+                                                                                      batch_shaking_tag.to(device)
+                                                                                      )
 
     # zero the parameter gradients
     optimizer.zero_grad()
-    if config["encoder"] == "BERT":
-        pred_small_shaking_outputs, sampled_tok_pair_indices = rel_extractor(batch_input_ids,
-                                                                             batch_attention_mask,
-                                                                             batch_token_type_ids
-                                                                             )
-    elif config["encoder"] in {"BiLSTM", }:
-        pred_small_shaking_outputs, sampled_tok_pair_indices = rel_extractor(batch_input_ids)
+    pred_small_shaking_outputs, sampled_tok_pair_indices = rel_extractor(batch_input_ids,
+                                                                         batch_attention_mask,
+                                                                         batch_token_type_ids
+                                                                         )
 
     # sampled_tok_pair_indices: (batch_size, ~segment_len)
     # batch_small_shaking_tag: (batch_size, ~segment_len, tag_size), eg: torch.Size([16, 8256, 196])
@@ -412,31 +335,21 @@ def train_step(batch_train_data, optimizer):
 
 # valid step
 def valid_step(batch_valid_data):
-    if config["encoder"] == "BERT":
-        sample_list, batch_input_ids, batch_attention_mask, batch_token_type_ids, tok2char_span_list, batch_shaking_tag = batch_valid_data
+    sample_list, batch_input_ids, batch_attention_mask, batch_token_type_ids, tok2char_span_list, batch_shaking_tag = batch_valid_data
 
-        batch_input_ids, batch_attention_mask, batch_token_type_ids, batch_shaking_tag = (batch_input_ids.to(device),
-                                                                                          batch_attention_mask.to(
-                                                                                              device),
-                                                                                          batch_token_type_ids.to(
-                                                                                              device),
-                                                                                          batch_shaking_tag.to(device)
-                                                                                          )
+    batch_input_ids, batch_attention_mask, batch_token_type_ids, batch_shaking_tag = (batch_input_ids.to(device),
+                                                                                      batch_attention_mask.to(
+                                                                                          device),
+                                                                                      batch_token_type_ids.to(
+                                                                                          device),
+                                                                                      batch_shaking_tag.to(device)
+                                                                                      )
 
-    elif config["encoder"] in {"BiLSTM", }:
-        sample_list, batch_input_ids, tok2char_span_list, batch_shaking_tag = batch_valid_data
-
-        batch_input_ids, batch_shaking_tag = (batch_input_ids.to(device),
-                                              batch_shaking_tag.to(device)
-                                              )
     with torch.no_grad():
-        if config["encoder"] == "BERT":
-            pred_shaking_outputs, _ = rel_extractor(batch_input_ids,
-                                                    batch_attention_mask,
-                                                    batch_token_type_ids,
-                                                    )
-        elif config["encoder"] in {"BiLSTM", }:
-            pred_shaking_outputs, _ = rel_extractor(batch_input_ids)
+        pred_shaking_outputs, _ = rel_extractor(batch_input_ids,
+                                                batch_attention_mask,
+                                                batch_token_type_ids,
+                                                )
 
     pred_shaking_tag = (pred_shaking_outputs > 0.).long()
     sample_acc = metrics.get_sample_accuracy(pred_shaking_tag,
