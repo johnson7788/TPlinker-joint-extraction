@@ -134,26 +134,26 @@ class HandshakingKernel(nn.Module):
     
     def forward(self, seq_hiddens):
         '''
-        seq_hiddens: (batch_size, seq_len, hidden_size)
+        隐藏层维度 seq_hiddens: (batch_size, seq_len, hidden_size)
         return:
-            shaking_hiddenss: (batch_size, (1 + seq_len) * seq_len / 2, hidden_size) (32, 5+4+3+2+1, 5), 每个任务的长度是\frac{n^2+n}{2}， n是句子长度
+            shaking_hiddenss: (batch_size, (1 + seq_len) * seq_len / 2, hidden_size) (32, 128+127+...+3+2+1, 768), 每个任务的长度是\frac{n^2+n}{2}， n是句子长度
         '''
         seq_len = seq_hiddens.size()[-2]
         shaking_hiddens_list = [] # 例如序列长度是100，那么里面包含100个隐藏向量列表，每个向量的维度是 [batch_size, xx, hidden_size], xx是从100到1逐渐递减, 100是序列的长度
         for ind in range(seq_len):
-            hidden_each_step = seq_hiddens[:, ind, :]  #形状： (batch_size, hidden_size)
-            visible_hiddens = seq_hiddens[:, ind:, :] #形状： (batch_size, xxxx, hidden_size) , ind表示，只查看后面的向量，
-            repeat_hiddens = hidden_each_step[:, None, :].repeat(1, seq_len - ind, 1)  
+            hidden_each_step = seq_hiddens[:, ind, :]  #截取某个token的向量，形状： (batch_size, hidden_size)
+            visible_hiddens = seq_hiddens[:, ind:, :] #截取某个token的向量， 形状： (batch_size, xxxx, hidden_size) , ind表示，只查看后面的向量，
+            repeat_hiddens = hidden_each_step[:, None, :].repeat(1, seq_len - ind, 1)  # 扩充中间维度，
             # 如果是cat模式，那么形状变成 torch.Size([6, 100, 1536])
             if self.shaking_type == "cat":
-                shaking_hiddens = torch.cat([repeat_hiddens, visible_hiddens], dim = -1)
-                shaking_hiddens = torch.tanh(self.combine_fc(shaking_hiddens))  # 变回隐藏向量的维度torch.Size([6, 100, 1536]) -->torch.Size([6, 100, 768])
+                shaking_hiddens = torch.cat([repeat_hiddens, visible_hiddens], dim = -1)   #维度是 [batch_size, xxx, hidden_size*2], xxx是与当前for循环遍历相关
+                shaking_hiddens = torch.tanh(self.combine_fc(shaking_hiddens))  # 变回隐藏向量的维度torch.Size([6, xxx, 1536]) -->torch.Size([6, xxx, 768])
             elif self.shaking_type == "cat_plus":
-                inner_context = self.enc_inner_hiddens(visible_hiddens, self.inner_enc_type)
-                shaking_hiddens = torch.cat([repeat_hiddens, visible_hiddens, inner_context], dim = -1)
+                inner_context = self.enc_inner_hiddens(visible_hiddens, self.inner_enc_type)  # self.inner_enc_type支持池化或lstm，得到最后结果
+                shaking_hiddens = torch.cat([repeat_hiddens, visible_hiddens, inner_context], dim = -1)   ##维度是 [batch_size, xxx, hidden_size*3], xxx是与当前for循环遍历相关
                 shaking_hiddens = torch.tanh(self.combine_fc(shaking_hiddens))
             elif self.shaking_type == "cln":
-                shaking_hiddens = self.tp_cln(visible_hiddens, repeat_hiddens)
+                shaking_hiddens = self.tp_cln(visible_hiddens, repeat_hiddens)  # 层归一化
             elif self.shaking_type == "cln_plus":
                 inner_context = self.enc_inner_hiddens(visible_hiddens, self.inner_enc_type)   # 维度: [batch_size, seq_len, hidden_size]
                 shaking_hiddens = self.tp_cln(visible_hiddens, repeat_hiddens)     # 维度: [batch_size, seq_len, hidden_size]

@@ -208,16 +208,14 @@ def sample_equal_to(sample1, sample2):
 
 # # Dataset
 
-
+# tokenizer
 if config["encoder"] == "BERT":
     tokenizer = BertTokenizerFast.from_pretrained(config["bert_path"], add_special_tokens=False, do_lower_case=False)
     data_maker = DataMaker4Bert(tokenizer, handshaking_tagger)
-
 elif config["encoder"] in {"BiLSTM", }:
     token2idx_path = os.path.join(data_home, experiment_name, config["token2idx"])
     token2idx = json.load(open(token2idx_path, "r", encoding="utf-8"))
     idx2token = {idx: tok for tok, idx in token2idx.items()}
-
 
     def text2indices(text, max_seq_len):
         input_ids = []
@@ -409,8 +407,8 @@ def train_step(batch_train_data, optimizer):
     optimizer.step()
     #     print("bp: {}".format(time.time() - t1))
     pred_small_shaking_tag = (pred_small_shaking_outputs > 0.).long()
-    sample_acc = metrics.get_sample_accuracy(pred_small_shaking_tag,
-                                             batch_small_shaking_tag)
+    # 这个批次的准确率
+    sample_acc = metrics.get_sample_accuracy(pred_small_shaking_tag,batch_small_shaking_tag)
 
     return loss.item(), sample_acc.item()
 
@@ -605,9 +603,11 @@ def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_ep
         return final_score
 
     for ep in range(num_epoch):
+        # 训练
         train(train_dataloader, ep)
+        # 验证
         valid_f1 = valid(valid_dataloader, ep)
-
+        # 当验证集的f1 score大于训练集时，保存模型
         global max_f1
         if valid_f1 >= max_f1:
             max_f1 = valid_f1
@@ -617,30 +617,29 @@ def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_ep
                            os.path.join(model_state_dict_dir, "model_state_dict_{}.pt".format(modle_state_num)))
         #                 scheduler_state_num = len(glob.glob(schedule_state_dict_dir + "/scheduler_state_dict_*.pt"))
         #                 torch.save(scheduler.state_dict(), os.path.join(schedule_state_dict_dir, "scheduler_state_dict_{}.pt".format(scheduler_state_num)))
-        print("Current avf_f1: {}, Best f1: {}".format(valid_f1, max_f1))
+        print("当前验证集的f1值是: {}, 总的最好的f1值是: {}".format(valid_f1, max_f1))
 
 
 # optimizer
 init_learning_rate = float(hyper_parameters["lr"])
 optimizer = torch.optim.Adam(rel_extractor.parameters(), lr=init_learning_rate)
 
+# 不同的学习率计划
 if hyper_parameters["scheduler"] == "CAWR":
     T_mult = hyper_parameters["T_mult"]
     rewarm_epoch_num = hyper_parameters["rewarm_epoch_num"]
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,
                                                                      len(train_dataloader) * rewarm_epoch_num, T_mult)
-
 elif hyper_parameters["scheduler"] == "Step":
     decay_rate = hyper_parameters["decay_rate"]
     decay_steps = hyper_parameters["decay_steps"]
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=decay_steps, gamma=decay_rate)
-
 elif hyper_parameters["scheduler"] == "ReduceLROnPlateau":
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min", verbose=True, patience=6)
 
 if not config["fr_scratch"]:
     model_state_path = config["model_state_dict_path"]
     rel_extractor.load_state_dict(torch.load(model_state_path))
-    print("------------model state {} loaded ----------------".format(model_state_path.split("/")[-1]))
+    print("------------继续训练，加载模型 {} 完成 ----------------".format(model_state_path.split("/")[-1]))
 
 train_n_valid(train_dataloader, valid_dataloader, optimizer, scheduler, hyper_parameters["epochs"])

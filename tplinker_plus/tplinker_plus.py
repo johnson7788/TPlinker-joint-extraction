@@ -49,7 +49,7 @@ class HandshakingTaggingScheme(object):
         self.shaking_idx2matrix_idx = [(ind, end_ind) for ind in range(self.matrix_size) for end_ind in list(range(self.matrix_size))[ind:]]
         # 初始化一个矩阵到shaking序列的映射, 形状128 * 128
         self.matrix_idx2shaking_idx = [[0 for i in range(self.matrix_size)] for j in range(self.matrix_size)]
-        # 更新下矩阵到序列的映射
+        # 更新下tag标签矩阵到shaking序列的映射
         for shaking_ind, matrix_ind in enumerate(self.shaking_idx2matrix_idx):
             self.matrix_idx2shaking_idx[matrix_ind[0]][matrix_ind[1]] = shaking_ind
     
@@ -58,6 +58,7 @@ class HandshakingTaggingScheme(object):
     
     def get_spots(self, sample):
         '''
+        生成标签矩阵
         matrix_spots: [(tok_pos1, tok_pos2, tag_id), ]
         '''
         matrix_spots = [] 
@@ -475,7 +476,7 @@ class TPLinkerPlusBert(nn.Module):
 #             sampled_tok_pair_indices = torch.randint(shaking_seq_len, (shaking_hiddens.size()[0], segment_len))
             sampled_tok_pair_indices = sampled_tok_pair_indices.to(shaking_hiddens.device)
 
-            # sampled_tok_pair_indices will tell model what token pairs should be fed into fcs
+            # sampled_tok_pair_indices 将告诉模型什么token pairs 会输入到全连接
             # shaking_hiddens: (batch_size, ~segment_len, hidden_size), eg: shaking_hiddens: torch.Size([16, 8256, 768])
             shaking_hiddens = shaking_hiddens.gather(1, sampled_tok_pair_indices[:,:,None].repeat(1, 1, shaking_hiddens.size()[-1]))
  
@@ -604,10 +605,11 @@ class MetricsCalculator():
     # loss func
     def _multilabel_categorical_crossentropy(self, y_pred, y_true, ghm = True):
         """
+        多标签分类交叉熵损失函数
         y_pred: (batch_size, shaking_seq_len, type_size)
         y_true: (batch_size, shaking_seq_len, type_size)
-        y_true and y_pred have the same shape，elements in y_true are either 0 or 1，
-             1 tags positive classes，0 tags negtive classes(means tok-pair does not have this type of link).
+        y_true和y_pred具有相同的形状，y_true中的元素要么是0，要么是1。
+             1标记正类，0标记负类（意味着tok-pair没有这种联系）。
         """
         y_pred = (1 - 2 * y_true) * y_pred # -1 -> pos classes, 1 -> neg classes
         y_pred_neg = y_pred - y_true * 1e12 # mask the pred oudtuts of pos classes
@@ -764,9 +766,9 @@ class MetricsCalculator():
                    batch_pred_shaking_tag, 
                    pattern = "only_head_text"):
         '''
-        return correct number, predict number, gold number (cpg)
+        返回正确数字，预测数字，glod数字（cpg）
         '''
-        
+        # 如果有事件的信息，那么也加入进来
         ee_cpg_dict = {
                 "trigger_iden_cpg": [0, 0, 0],
                 "trigger_class_cpg": [0, 0, 0],
@@ -774,8 +776,8 @@ class MetricsCalculator():
                 "arg_class_cpg": [0, 0, 0],
                 }
         ere_cpg_dict = {
-                "rel_cpg": [0, 0, 0],
-                "ent_cpg": [0, 0, 0],
+                "rel_cpg": [0, 0, 0],  # 关系，预测正确的数字，预测数字，gold数字
+                "ent_cpg": [0, 0, 0],  # 实体
                 }
         
         # go through all sentences
