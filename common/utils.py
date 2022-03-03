@@ -57,7 +57,6 @@ class Preprocessor:
                 text = sample["sentText"]
                 rel_list = sample["relationMentions"]
                 subj_key, pred_key, obj_key = "em1Text", "label", "em2Text"
-
             normal_sample = {
                 "text": text,
             }
