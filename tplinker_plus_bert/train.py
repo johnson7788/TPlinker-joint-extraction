@@ -400,7 +400,7 @@ def train_n_valid(train_dataloader, dev_dataloader, optimizer, scheduler, num_ep
 
             avg_sample_acc = total_sample_acc / (batch_ind + 1)
 
-            batch_print_format = "\r项目: {}, 实验名字: {}, Epoch: {}/{}, batch: {}/{}, train_loss: {}, " + "训练样本准确率: {}," + "lr: {}, batch耗时: {}秒, 总耗时: {}秒 -------------"
+            batch_print_format = "\r项目: {}, 实验名字: {}, Epoch: {}/{}, batch: {}/{}, train_loss: {}, " + "训练shaking tag准确率: {}," + "lr: {}, batch耗时: {}秒, 总耗时: {}秒 -------------"
             if batch_ind % 10 == 0:
                 # 每10个step打印一次日志
                 print(batch_print_format.format(experiment_name, config["run_name"],
