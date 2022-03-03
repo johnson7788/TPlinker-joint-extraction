@@ -167,6 +167,50 @@ def get_entity_relation(dirpath='/opt/nlp/data/paperkg'):
     print(data[0])
     return data
 
+def get_shenji():
+    dir_path = "/opt/ai/shenji_update"
+    def get_data(path, id_prefix="train"):
+        train_data = []
+        num = 0
+        with open(os.path.join(dir_path, path)) as f:
+            for line in f:
+                num += 1
+                entities = []
+                got_relations = []
+                line_dict = json.loads(line)
+                text = line_dict['sentence']
+                for ent in line_dict['entity_mentions']:
+                    ent_type = ent["entity_type"]
+                    ent_text = ent["text"]
+                    entity = {
+                        "text": ent_text,
+                        "type": ent_type
+                    }
+                    entities.append(entity)
+                for rel in line_dict['relation_mentions']:
+                    relation = rel['relation_type']
+                    subject = rel['arguments'][0]['text']
+                    object = rel['arguments'][1]['text']
+                    one_relation = {
+                        "subject": subject,
+                        "object": object,
+                        "predicate": relation
+                    }
+                    got_relations.append(one_relation)
+                id = f"{id_prefix}_{num}"
+                one_data = {
+                    "id": id,
+                    "text": text,
+                    "entity_list": entities,
+                    "relation_list": got_relations
+                }
+                train_data.append(one_data)
+        return train_data
+    train_data = get_data("train.json", id_prefix="train")
+    valid_data = get_data("dev.json", id_prefix="valid")
+    test_data = get_data("test.json", id_prefix="test")
+    print(train_data)
+
 if exp_name == "duie":
     file_name2data = {}
     for path, folds, files in os.walk(data_in_dir):
@@ -207,6 +251,8 @@ elif exp_name == "paperkg":
         d["id"] = f"test_{idx}"
         test_data.append(d)
     file_name2data["test_data"] = test_data
+elif exp_name == "shenji":
+    file_name2data = get_shenji()
 else:
     file_name2data = {}
     for path, folds, files in os.walk(data_in_dir):
