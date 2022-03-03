@@ -209,7 +209,11 @@ def get_shenji():
     train_data = get_data("train.json", id_prefix="train")
     valid_data = get_data("dev.json", id_prefix="valid")
     test_data = get_data("test.json", id_prefix="test")
-    print(train_data)
+    file_name2data = {}
+    file_name2data["train_data"] = train_data
+    file_name2data["valid_data"] = valid_data
+    file_name2data["test_data"] = test_data
+    return file_name2data
 
 if exp_name == "duie":
     file_name2data = {}
