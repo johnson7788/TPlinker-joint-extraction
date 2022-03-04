@@ -23,23 +23,20 @@ import time
 from common.utils import Preprocessor
 from tplinker_plus import (HandshakingTaggingScheme,
                           DataMaker4Bert, 
-                          DataMaker4BiLSTM, 
-                          TPLinkerPlusBert, 
-                          TPLinkerPlusBiLSTM,
+                          TPLinkerPlusBert,
                           MetricsCalculator)
 import wandb
 import config
-from glove import Glove
 import numpy as np
 
 
-# In[2]:
+
 
 
 config = config.eval_config
 
 
-# In[3]:
+
 
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
@@ -47,7 +44,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = str(config["device_num"])
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-# In[4]:
+
 
 
 data_home = config["data_home"]
@@ -64,7 +61,7 @@ torch.backends.cudnn.deterministic = True
 
 # # Load Data
 
-# In[5]:
+
 
 
 test_data_path_dict = {}
@@ -73,7 +70,7 @@ for file_path in glob.glob(test_data_path):
     test_data_path_dict[file_name] = file_path
 
 
-# In[6]:
+
 
 
 test_data_dict = {}
@@ -83,7 +80,7 @@ for file_name, path in test_data_path_dict.items():
 
 # # Split
 
-# In[7]:
+
 
 
 if config["encoder"] == "BERT":
@@ -102,14 +99,14 @@ elif config["encoder"] in {"BiLSTM", }:
         return tok2char_span
 
 
-# In[8]:
+
 
 
 preprocessor = Preprocessor(tokenize_func = tokenize, 
                             get_tok2char_span_map_func = get_tok2char_span_map)
 
 
-# In[9]:
+
 
 
 all_data = []
@@ -431,7 +428,7 @@ def get_test_prf(pred_sample_list, gold_test_data, pattern = "whole_text"):
         text_id2gold_n_pred[text_id] = {
             "gold_relation_list": sample["relation_list"],
             "gold_entity_list": sample["entity_list"],
-            "gold_event_list": sample["event_list"],
+            # "gold_event_list": sample["event_list"],
         }
     
     for sample in pred_sample_list:
